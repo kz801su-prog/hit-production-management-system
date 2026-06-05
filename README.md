@@ -264,6 +264,31 @@ CHAIR-A-02  ← 柄合わせ（version_no = 2）
 
 ---
 
+## Xserver デプロイ時の注意点
+
+`config/config.php` は `.gitignore` により git 管理対象外です。  
+Xserver にファイルをアップロードした後、以下の手順で `config.php` を手動作成してください。
+
+**① テンプレートをコピーする（FTP/SSH/ファイルマネージャーで作業）**
+
+```
+config/config.php.example  →  config/config.php  にコピー
+```
+
+**② config.php を編集してXserver の値を入力する**
+
+```php
+define('DB_NAME', 'xs000000_chair');    // Xserverで作成したDB名
+define('DB_USER', 'xs000000_chair');    // Xserverで作成したDBユーザー名
+define('DB_PASS', 'YOUR_DB_PASSWORD'); // Xserverで設定したDBパスワード
+define('APP_URL', 'https://example.com/public'); // 実際のURL
+```
+
+> `config/config.php` は git に含まれないため、サーバー上で直接編集するか、  
+> FTPクライアント（FileZillaなど）でアップロードしてください。
+
+---
+
 ## セキュリティチェックリスト（本番稼働前）
 
 - [ ] `config.php` の `DB_PASS` を強力なパスワードに変更した
