@@ -1,0 +1,27 @@
+# =====================================================
+# DBパスワード・暗号化キーが含まれるため絶対にコミットしない
+# =====================================================
+config/config.php
+
+# アップロードされたファイル（バイナリ・ユーザーデータ）
+uploads/chair_type_media/*
+uploads/csv/*
+
+# バックアップSQLファイル
+database/backup/*
+
+# PHP エラーログ
+*.log
+error_log
+
+# OS / エディタ生成ファイル
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+*.swp
+*.swo
+
+# IDE
+.idea/
+*.sublime-workspace

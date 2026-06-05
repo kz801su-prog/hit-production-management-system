@@ -1,0 +1,58 @@
+<?php
+// =====================================================
+// アプリ設定ファイル
+// 目的: DB接続情報・アプリ定数・パス設定を一元管理
+// 注意: 本番環境では DB_PASS と ENCRYPTION_KEY を必ず変更する
+// =====================================================
+
+// =====================================================
+// Xserver MySQL 接続設定
+// Xserverサーバーパネル > MySQL設定 で確認する値を入力する
+// ホスト: 通常は localhost（同サーバー接続）
+// ユーザー名・DB名: 「Xserverアカウント_任意の名前」形式（例: xs123456_chair）
+// =====================================================
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'xs000000_chair');   // ← Xserverで作成したDB名に変更
+define('DB_USER', 'xs000000_chair');   // ← Xserverで作成したDBユーザー名に変更
+define('DB_PASS', 'YOUR_DB_PASSWORD'); // ← Xserverで設定したDBパスワードに変更
+define('DB_CHARSET', 'utf8mb4');
+
+// アプリ基本設定
+define('APP_NAME', '椅子製造 工程管理システム');
+define('APP_VERSION', '2.0.0');
+
+// URLとパス設定
+// Xserver本番環境では独自ドメインのURLに変更する
+// 例: https://www.otsu-furniture.com/system/public
+define('APP_URL', 'https://www.example.com/public');  // ← 本番URLに変更
+define('BASE_PATH', dirname(__DIR__));
+define('UPLOAD_DIR', BASE_PATH . '/uploads/');
+define('UPLOAD_MEDIA_DIR', BASE_PATH . '/uploads/chair_type_media/');
+define('BACKUP_DIR', BASE_PATH . '/database/backup/');
+
+// セキュリティ設定
+// 本番環境では必ずランダムな32文字以上の文字列に変更すること
+define('ENCRYPTION_KEY', 'change-this-key-to-random-32chars!!');
+define('SESSION_TIMEOUT', 3600);  // セッションタイムアウト: 1時間
+
+// メール設定
+define('MAIL_FROM', 'system@otsu-furniture.com');
+define('MAIL_FROM_NAME', '椅子製造 工程管理システム');
+define('MAIL_ADMIN', 'admin@otsu-furniture.com');
+
+// バックアップ設定
+define('BACKUP_RETENTION_DAYS', 30);  // バックアップ保持日数
+
+// 達成率による判定閾値（%）
+define('PERF_VERY_FAST', 120);   // かなり早い
+define('PERF_FAST',      100);   // 早い
+define('PERF_NORMAL',    90);    // 標準
+define('PERF_SLOW',      75);    // 遅れ気味
+
+// 遅延警告閾値（分）
+define('DELAY_WARNING',  15);    // 警告レベル
+define('DELAY_CRITICAL', 60);    // 危険レベル
+
+// ファイルアップロード設定
+define('MAX_UPLOAD_MB', 10);
+define('ALLOWED_IMG_TYPES', ['image/jpeg', 'image/png', 'image/gif', 'image/webp']);

@@ -1,0 +1,94 @@
+<?php
+// =====================================================
+// ガントチャート
+// 目的: 時間軸で作業指示×工程の予定・実績を可視化
+// 接続テーブル: manufacturing_orders, manufacturing_order_processes, processes
+// JavaScript/CSS でガントを描画する
+// =====================================================
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../app/db.php';
+require_once __DIR__ . '/../app/auth.php';
+require_once __DIR__ . '/../app/permissions.php';
+require_once __DIR__ . '/../app/functions.php';
+
+requireLogin();
+$pageTitle = 'ガントチャート';
+
+$orderId   = getInt('order_id');
+$dateFrom  = $_GET['date_from'] ?? date('Y-m-d');
+$dateTo    = $_GET['date_to']   ?? date('Y-m-d', strtotime('+7 days'));
+
+// 表示対象の作業指示を取得
+$sql = "SELECT mo.id, mo.order_no, mo.priority, ct.chair_type_name
+        FROM manufacturing_orders mo
+        JOIN chair_types ct ON mo.chair_type_id = ct.id
+        WHERE mo.status IN ('planned','in_progress')";
+$params = [];
+if ($orderId) {
+    $sql .= " AND mo.id = ?";
+    $params[] = $orderId;
+}
+$sql .= " ORDER BY FIELD(mo.priority,'urgent','high','normal'), mo.due_date LIMIT 30";
+$orders = dbFetchAll($sql, $params);
+
+// 各作業指示の工程データを取得
+$ganttData = [];
+foreach ($orders as $o) {
+    $processes = dbFetchAll(
+        "SELECT mop.*, p.process_name, p.process_code
+         FROM manufacturing_order_processes mop
+         JOIN processes p ON mop.process_id = p.id
+         WHERE mop.manufacturing_order_id = ?
+         ORDER BY mop.process_sequence, p.display_order",
+        [$o['id']]
+    );
+    $ganttData[] = [
+        'order'     => $o,
+        'processes' => $processes,
+    ];
+}
+
+require __DIR__ . '/parts/header.php';
+?>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2><i class="bi bi-bar-chart-steps"></i> ガントチャート</h2>
+  <div>
+    <form method="get" class="d-flex gap-2">
+      <?php if ($orderId): ?><input type="hidden" name="order_id" value="<?= $orderId ?>"><?php endif; ?>
+      <input type="date" name="date_from" class="form-control form-control-sm" value="<?= h($dateFrom) ?>">
+      <span class="align-self-center">〜</span>
+      <input type="date" name="date_to"   class="form-control form-control-sm" value="<?= h($dateTo) ?>">
+      <button type="submit" class="btn btn-sm btn-primary">表示</button>
+    </form>
+  </div>
+</div>
+
+<!-- 凡例 -->
+<div class="mb-3 d-flex flex-wrap gap-2">
+  <span><span class="gantt-bar" style="background:#0d6efd">&nbsp;&nbsp;&nbsp;&nbsp;</span> 予定</span>
+  <span><span class="gantt-bar" style="background:#198754">&nbsp;&nbsp;&nbsp;&nbsp;</span> 完了</span>
+  <span><span class="gantt-bar" style="background:#ffc107">&nbsp;&nbsp;&nbsp;&nbsp;</span> 作業中</span>
+  <span><span class="gantt-bar" style="background:#dc3545">&nbsp;&nbsp;&nbsp;&nbsp;</span> 遅延</span>
+</div>
+
+<div id="ganttContainer" class="gantt-container">
+  <!-- ガントチャートはJSで描画 -->
+  <div class="text-muted text-center py-3" id="ganttLoading">チャートを描画中...</div>
+</div>
+
+<!-- ガントチャート用データをJSへ渡す -->
+<?php
+$jsData = json_encode([
+    'dateFrom'  => $dateFrom,
+    'dateTo'    => $dateTo,
+    'ganttData' => $ganttData,
+], JSON_UNESCAPED_UNICODE);
+$extraJs = <<<JS
+(function(){
+  const raw = {$jsData};
+  renderGantt('ganttContainer', raw);
+})();
+JS;
+require __DIR__ . '/parts/footer.php';
+?>

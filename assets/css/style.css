@@ -1,0 +1,161 @@
+/* =====================================================
+   椅子製造 工程管理システム カスタムスタイル
+   ===================================================== */
+
+/* フォント */
+body {
+  font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', 'Yu Gothic', sans-serif;
+  font-size: 0.9rem;
+  background-color: #f8f9fa;
+}
+
+/* ナビゲーション */
+.navbar-brand {
+  letter-spacing: 0.03em;
+}
+
+/* フッター */
+.footer {
+  margin-top: auto;
+  font-size: 0.75rem;
+}
+
+/* 椅子タイプサムネイル */
+.chair-thumb {
+  height: 160px;
+  object-fit: contain;
+  background: #f5f5f5;
+}
+
+/* ガントチャートコンテナ */
+.gantt-container {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 600px;
+}
+
+.gantt-wrapper {
+  min-width: 1000px;
+}
+
+.gantt-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #dee2e6;
+  min-height: 36px;
+}
+
+.gantt-label {
+  width: 200px;
+  min-width: 200px;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  border-right: 1px solid #dee2e6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gantt-timeline {
+  flex: 1;
+  position: relative;
+  height: 28px;
+}
+
+.gantt-bar {
+  position: absolute;
+  height: 18px;
+  top: 5px;
+  border-radius: 3px;
+  opacity: 0.85;
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  font-size: 0.7rem;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.gantt-header {
+  display: flex;
+  border-bottom: 2px solid #343a40;
+  background: #343a40;
+  color: white;
+  font-size: 0.75rem;
+}
+
+.gantt-header-label {
+  width: 200px;
+  min-width: 200px;
+  padding: 4px 8px;
+}
+
+.gantt-date-cell {
+  border-left: 1px solid #555;
+  text-align: center;
+  padding: 2px 0;
+  font-size: 0.7rem;
+}
+
+/* テーブル内の超小ボタン */
+.btn-xs {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.7rem;
+  border-radius: 3px;
+}
+
+/* 進捗カード */
+.card-process {
+  transition: box-shadow 0.2s;
+}
+.card-process:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* KPIカードの数値 */
+.kpi-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* 遅延警告アニメーション */
+@keyframes blink-warning {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+.blink-critical {
+  animation: blink-warning 1.5s infinite;
+}
+
+/* ダッシュボード用カード */
+.card-dashboard {
+  transition: transform 0.15s;
+}
+.card-dashboard:hover {
+  transform: translateY(-2px);
+}
+
+/* 標準時間テーブルの入力フォーム */
+.standards-table input[type="number"],
+.standards-table input[type="text"] {
+  min-width: 60px;
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  .gantt-label {
+    width: 120px;
+    min-width: 120px;
+  }
+  .navbar-brand small {
+    display: none;
+  }
+}
+
+/* 印刷用スタイル */
+@media print {
+  .navbar, .footer, .btn, form { display: none !important; }
+  .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
+}
