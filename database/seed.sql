@@ -102,15 +102,13 @@ VALUES
 (3, 'CHAIR-C',    'スタッキングチェア 基本形', 0, 1, 20, '積み重ね可能、金属フレーム、布張り');
 
 -- バージョン（差分あり）
+-- 同一テーブル参照を避けるためセッション変数を使用
+SET @chair_a_id = (SELECT id FROM chair_types WHERE chair_type_code = 'CHAIR-A');
 INSERT IGNORE INTO chair_types
     (chair_type_group_id, chair_type_code, chair_type_name, version_no, is_base_type, base_chair_type_id, base_quantity, shape_summary, difference_summary)
 VALUES
-(1, 'CHAIR-A-01', '事務用回転椅子 肘付き', 1, 0,
-    (SELECT id FROM chair_types WHERE chair_type_code = 'CHAIR-A'),
-    10, '肘付きタイプ', '肘付きのため張り込み工程に追加時間'),
-(1, 'CHAIR-A-02', '事務用回転椅子 柄合わせ', 2, 0,
-    (SELECT id FROM chair_types WHERE chair_type_code = 'CHAIR-A'),
-    10, '柄物生地使用', '柄合わせのため裁断・縫製に追加時間');
+(1, 'CHAIR-A-01', '事務用回転椅子 肘付き',  1, 0, @chair_a_id, 10, '肘付きタイプ',  '肘付きのため張り込み工程に追加時間'),
+(1, 'CHAIR-A-02', '事務用回転椅子 柄合わせ', 2, 0, @chair_a_id, 10, '柄物生地使用', '柄合わせのため裁断・縫製に追加時間');
 
 -- =====================================================
 -- 工程標準時間初期データ（CHAIR-A 基本形）
