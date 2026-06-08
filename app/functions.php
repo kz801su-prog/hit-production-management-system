@@ -86,6 +86,31 @@ function orderStatusLabel(string $status): array {
 }
 
 /**
+ * 工程ステータスのバッジHTMLを返す
+ */
+function processStatusBadge(string $status): string {
+    $s = processStatusLabel($status);
+    return '<span class="badge bg-' . $s['class'] . '">' . $s['label'] . '</span>';
+}
+
+/**
+ * 作業指示ステータスのバッジHTMLを返す
+ */
+function orderStatusBadge(string $status): string {
+    $s = orderStatusLabel($status);
+    return '<span class="badge bg-' . $s['class'] . '">' . $s['label'] . '</span>';
+}
+
+/**
+ * 優先度バッジHTMLを返す
+ */
+function priorityBadge(string $priority): string {
+    $p = priorityLabel($priority);
+    return '<span class="badge bg-' . $p['class'] . ' text-' . ($p['class'] === 'warning' ? 'dark' : 'white') . '">'
+         . $p['label'] . '</span>';
+}
+
+/**
  * 数値を安全に取得（null / 空文字は 0 にする）
  */
 function safeFloat(mixed $val): float {

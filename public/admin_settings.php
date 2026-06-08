@@ -83,10 +83,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $overheadCost = (int)str_replace([',','，'], '', postStr('monthly_overhead_cost'));
         $userId = getCurrentUser()['id'];
 
+        $productionTarget = (int)str_replace([',','，'], '', postStr('monthly_production_target'));
         foreach ([
-            'cost_target_month'   => $costMonth,
-            'monthly_salary_total'  => (string)$salaryTotal,
-            'monthly_overhead_cost' => (string)$overheadCost,
+            'cost_target_month'         => $costMonth,
+            'monthly_salary_total'      => (string)$salaryTotal,
+            'monthly_overhead_cost'     => (string)$overheadCost,
+            'monthly_production_target' => (string)$productionTarget,
         ] as $key => $val) {
             dbExecute(
                 "INSERT INTO system_settings (setting_key, setting_value, updated_by_user_id)
@@ -113,7 +115,10 @@ if (isPresidentOrAdmin()) {
     try {
         $rows = dbFetchAll(
             "SELECT setting_key, setting_value FROM system_settings
-             WHERE setting_key IN ('cost_target_month','monthly_salary_total','monthly_overhead_cost')"
+             WHERE setting_key IN (
+                 'cost_target_month','monthly_salary_total','monthly_overhead_cost',
+                 'monthly_production_target'
+             )"
         );
         foreach ($rows as $r) {
             $costSettings[$r['setting_key']] = $r['setting_value'];
@@ -259,6 +264,16 @@ require __DIR__ . '/parts/header.php';
           <input type="month" name="cost_target_month" class="form-control"
                  value="<?= h($costSettings['cost_target_month'] ?? date('Y-m')) ?>">
           <div class="form-text">空白 = 当月</div>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">月間生産目標本数</label>
+          <div class="input-group">
+            <input type="number" name="monthly_production_target" class="form-control"
+                   value="<?= h($costSettings['monthly_production_target'] ?? '0') ?>"
+                   min="0" step="1">
+            <span class="input-group-text">本</span>
+          </div>
+          <div class="form-text">0 = 自動（受注数）</div>
         </div>
         <div class="col-md-4">
           <label class="form-label">月間給与総額（円）</label>
