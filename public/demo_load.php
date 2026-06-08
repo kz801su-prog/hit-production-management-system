@@ -10,6 +10,7 @@ require_once __DIR__ . '/../app/auth.php';
 require_once __DIR__ . '/../app/permissions.php';
 require_once __DIR__ . '/../app/functions.php';
 require_once __DIR__ . '/../app/logger.php';
+require_once __DIR__ . '/../app/chair_type_service.php';
 require_once __DIR__ . '/../app/order_service.php';
 require_once __DIR__ . '/../app/standard_time_service.php';
 
