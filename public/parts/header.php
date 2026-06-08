@@ -22,7 +22,7 @@ $user      = getCurrentUser();
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
   <div class="container-fluid">
     <a class="navbar-brand fw-bold" href="<?= APP_URL ?>/dashboard.php">
-      <i class="bi bi-tools"></i> 大津家具 工程管理
+      <i class="bi bi-tools"></i> オーツーファーニチャー 工程管理
     </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
       <span class="navbar-toggler-icon"></span>

@@ -61,7 +61,7 @@ $word = dbFetchOne("SELECT * FROM president_words WHERE is_active = 1 ORDER BY R
       <!-- アプリタイトル -->
       <div class="text-center mb-4">
         <h1 class="text-white fw-bold fs-4">
-          <i class="bi bi-tools"></i> 大津家具<br>
+          <i class="bi bi-tools"></i> オーツーファーニチャー<br>
           <small class="fs-6 text-white-50">椅子製造 工程管理システム</small>
         </h1>
       </div>
