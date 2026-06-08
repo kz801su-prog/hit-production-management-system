@@ -1,8 +1,7 @@
 <?php
 // =====================================================
-// デモデータ管理
-// 製造指示サンプルデータの読み込み・クリア
-// 社長・admin のみアクセス可
+// デモデータ管理（自己完結版）
+// 外部サービスファイルに依存せず直接SQLで処理
 // =====================================================
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../app/db.php';
@@ -10,9 +9,6 @@ require_once __DIR__ . '/../app/auth.php';
 require_once __DIR__ . '/../app/permissions.php';
 require_once __DIR__ . '/../app/functions.php';
 require_once __DIR__ . '/../app/logger.php';
-require_once __DIR__ . '/../app/chair_type_service.php';
-require_once __DIR__ . '/../app/order_service.php';
-require_once __DIR__ . '/../app/standard_time_service.php';
 
 requireLogin();
 requireRole('admin');
@@ -47,20 +43,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // =====================================================
-// デモデータ読み込み
+// 製造データを全削除
+// =====================================================
+function clearMfgData(): void {
+    $db = getDB();
+    $db->exec("DELETE FROM work_logs");
+    $db->exec("DELETE FROM manufacturing_order_processes");
+    $db->exec("DELETE FROM manufacturing_orders");
+}
+
+// =====================================================
+// CHAIR-A 標準時間を数量から計算（chair_type_service 不要）
+// =====================================================
+function calcDemoTimes(int $qty): array {
+    // [code, setup, base_work, allowance_rate%, fixed_allowance, base_qty, sequence]
+    $stds = [
+        ['CUT',   15,  80,  5.0,  5, 10, 10],
+        ['SEW',   20, 120,  8.0, 10, 10, 20],
+        ['FOAM',  10,  60,  5.0,  5, 10, 30],
+        ['FRAME', 15,  90,  5.0,  5, 10, 40],
+        ['UPH',   20, 150,  8.0, 10, 10, 50],
+        ['INSP',  10,  40,  3.0,  3, 10, 60],
+        ['PACK',  10,  50,  3.0,  3, 10, 70],
+    ];
+    $result = [];
+    foreach ($stds as [$code, $setup, $baseWork, $rate, $fixAllow, $baseQty, $seq]) {
+        $net   = $baseWork / $baseQty * $qty;
+        $total = round($setup + $net * (1 + $rate / 100) + $fixAllow, 2);
+        $result[] = [
+            'code'     => $code,
+            'setup'    => $setup,
+            'net'      => round($net, 2),
+            'total'    => $total,
+            'sequence' => $seq,
+        ];
+    }
+    return $result;
+}
+
+// =====================================================
+// デモデータ読み込み（直接SQL版）
 // =====================================================
 function loadDemoData(int $userId): void {
     srand(42);
 
     clearMfgData();
 
-    // IDマップ
-    $ct  = array_column(dbFetchAll("SELECT id, chair_type_code FROM chair_types"), 'id', 'chair_type_code');
-    $emp = dbFetchAll("SELECT id, employee_code FROM employees WHERE employment_status='active' ORDER BY id");
-    $workerIds = array_values(array_column($emp, 'id'));
-    if (empty($workerIds)) $workerIds = [1];
+    $db = getDB();
 
-    $_SESSION['user_id'] = $userId;
+    // プロセスIDマップ取得
+    $procRows = dbFetchAll("SELECT id, process_code FROM processes");
+    $procMap  = array_column($procRows, 'id', 'process_code');
+
+    // 椅子タイプIDマップ取得
+    $ctRows = dbFetchAll("SELECT id, chair_type_code FROM chair_types");
+    $ct     = array_column($ctRows, 'id', 'chair_type_code');
+
+    // 作業者リスト取得
+    $empRows   = dbFetchAll("SELECT id FROM employees WHERE employment_status='active' ORDER BY id");
+    $workerIds = array_column($empRows, 'id');
+    if (empty($workerIds)) $workerIds = [1];
 
     // =====================================================
     // 注文定義
@@ -96,21 +138,54 @@ function loadDemoData(int $userId): void {
         ['CHAIR-A',     5, 'テスト株式会社',               'キャンセル注文',             -60, -40,  'normal', 'cancelled'],
     ];
 
+    $year    = date('Y');
     $created = [];
-    foreach ($defs as $d) {
+
+    foreach ($defs as $i => $d) {
         [$ctCode, $qty, $customer, $project, $orderOfs, $dueOfs, $priority, $finalStatus] = $d;
         $chairTypeId = $ct[$ctCode] ?? $ct['CHAIR-A'] ?? 1;
+        $orderNo     = sprintf('WO-%s-%04d', $year, $i + 1);
+        $orderDate   = date('Y-m-d', strtotime("{$orderOfs} days"));
+        $dueDate     = date('Y-m-d', strtotime("{$dueOfs} days"));
 
-        $orderId = createOrder([
-            'chair_type_id' => $chairTypeId,
-            'quantity'      => $qty,
-            'customer_name' => $customer,
-            'project_name'  => $project,
-            'order_date'    => date('Y-m-d', strtotime("{$orderOfs} days")),
-            'due_date'      => date('Y-m-d', strtotime("{$dueOfs} days")),
-            'priority'      => $priority,
-            'memo'          => '',
+        $stmt = $db->prepare(
+            "INSERT INTO manufacturing_orders
+                (order_no, customer_name, project_name, order_date,
+                 chair_type_id, quantity, due_date, priority, status, memo, created_by)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?)"
+        );
+        $stmt->execute([
+            $orderNo, $customer, $project, $orderDate,
+            $chairTypeId, $qty, $dueDate, $priority, $finalStatus, '', $userId,
         ]);
+        $orderId = (int)$db->lastInsertId();
+
+        // 完成済み注文は過去の日付を updated_at に設定（月別推移グラフ用）
+        if ($finalStatus === 'completed') {
+            $completionTs = strtotime($dueDate . ' +1 day');
+            $db->prepare(
+                "UPDATE manufacturing_orders SET updated_at=? WHERE id=?"
+            )->execute([date('Y-m-d H:i:s', $completionTs), $orderId]);
+        }
+
+        // キャンセル以外は工程レコードを作成
+        if ($finalStatus !== 'cancelled') {
+            $times = calcDemoTimes($qty);
+            foreach ($times as $t) {
+                $pid = $procMap[$t['code']] ?? null;
+                if (!$pid) continue;
+                $db->prepare(
+                    "INSERT INTO manufacturing_order_processes
+                        (manufacturing_order_id, process_id, process_sequence,
+                         planned_setup_minutes, planned_work_minutes,
+                         planned_total_minutes, assigned_worker_count)
+                     VALUES (?,?,?,?,?,?,2)"
+                )->execute([
+                    $orderId, $pid, $t['sequence'],
+                    $t['setup'], $t['net'], $t['total'],
+                ]);
+            }
+        }
 
         $created[] = [
             'id'         => $orderId,
@@ -121,32 +196,7 @@ function loadDemoData(int $userId): void {
         ];
     }
 
-    // ステータス更新
-    foreach ($created as $o) {
-        if ($o['status'] !== 'planned') {
-            dbExecute("UPDATE manufacturing_orders SET status=? WHERE id=?",
-                      [$o['status'], $o['id']]);
-        }
-        // 完成済み注文：過去の updated_at を設定（6ヶ月推移グラフに反映）
-        if ($o['status'] === 'completed') {
-            // due_offset の1日後を完成日とする
-            $completionTs = strtotime(date('Y-m-d', strtotime("{$o['due_offset']} days")) . ' +1 day');
-            dbExecute(
-                "UPDATE manufacturing_orders SET updated_at=? WHERE id=?",
-                [date('Y-m-d H:i:s', $completionTs), $o['id']]
-            );
-        }
-    }
-
-    // キャンセル注文の工程を削除
-    foreach ($created as $o) {
-        if ($o['status'] === 'cancelled') {
-            dbExecute("DELETE FROM manufacturing_order_processes WHERE manufacturing_order_id=?",
-                      [$o['id']]);
-        }
-    }
-
-    // ===== 完了注文：全工程を完了 + work_logs =====
+    // ===== 完了注文：全工程完了 + work_logs =====
     foreach ($created as $o) {
         if ($o['status'] !== 'completed') continue;
 
@@ -162,47 +212,47 @@ function loadDemoData(int $userId): void {
         $processTs    = $completionTs - count($procs) * 86400;
 
         foreach ($procs as $pi => $p) {
-            $plannedMin = max(30.0, (float)$p['planned_total_minutes']);
-            $ratio      = 0.82 + (rand(0, 30) / 100.0);
-            $actualMin  = (int)round($plannedMin * $ratio);
-            $delayMin   = max(0, $actualMin - (int)$plannedMin);
+            $plannedMin  = max(30.0, (float)$p['planned_total_minutes']);
+            $ratio       = 0.82 + (rand(0, 30) / 100.0);
+            $actualMin   = (int)round($plannedMin * $ratio);
+            $delayMin    = max(0, $actualMin - (int)$plannedMin);
             $delayStatus = $delayMin > 60 ? 'critical' : ($delayMin > 20 ? 'delayed' : 'normal');
 
             $startedAt = date('Y-m-d H:i:s', $processTs);
             $endedAt   = date('Y-m-d H:i:s', $processTs + $actualMin * 60);
 
-            dbExecute(
+            $db->prepare(
                 "UPDATE manufacturing_order_processes SET
                     status='completed', progress_rate=100,
                     actual_minutes=?, actual_start=?, actual_end=?,
                     completed_qty=?, delay_minutes=?, delay_status=?
-                 WHERE id=?",
-                [$actualMin, $startedAt, $endedAt, $o['qty'],
-                 $delayMin, $delayStatus, $p['id']]
-            );
+                 WHERE id=?"
+            )->execute([$actualMin, $startedAt, $endedAt,
+                        $o['qty'], $delayMin, $delayStatus, $p['id']]);
 
+            // 作業者2名 work_log
             [$w1, $w2] = demoWorkers($workerIds, $pi);
             foreach ([$w1, $w2] as $wi => $empId) {
                 $wStart = $processTs + $wi * 300;
                 $wEnd   = $wStart + $actualMin * 60;
-                dbExecute(
+                $db->prepare(
                     "INSERT INTO work_logs
                         (manufacturing_order_id, process_id, employee_id,
                          started_at, ended_at, actual_minutes, completed_qty, memo)
-                     VALUES (?,?,?,?,?,?,?,?)",
-                    [$o['id'], $p['process_id'], $empId,
-                     date('Y-m-d H:i:s', $wStart),
-                     date('Y-m-d H:i:s', $wEnd),
-                     $actualMin, $o['qty'],
-                     $wi === 0 ? '' : '補助作業']
-                );
+                     VALUES (?,?,?,?,?,?,?,?)"
+                )->execute([
+                    $o['id'], $p['process_id'], $empId,
+                    date('Y-m-d H:i:s', $wStart),
+                    date('Y-m-d H:i:s', $wEnd),
+                    $actualMin, $o['qty'],
+                    $wi === 0 ? '' : '補助作業',
+                ]);
             }
             $processTs += $actualMin * 60 + 3600;
         }
     }
 
     // ===== 仕掛中注文：途中まで完了 + 1工程が作業中 =====
-    // 各注文の完了済み工程数
     $ipDoneCount = [4, 3, 5, 3, 1];
     $ipIdx = 0;
 
@@ -224,74 +274,69 @@ function loadDemoData(int $userId): void {
             $plannedMin = max(30.0, (float)$p['planned_total_minutes']);
 
             if ($pi < $doneCount) {
-                // 完了工程
-                $ratio     = 0.85 + (rand(0, 25) / 100.0);
-                $actualMin = (int)round($plannedMin * $ratio);
-                $delayMin  = max(0, $actualMin - (int)$plannedMin);
+                $ratio       = 0.85 + (rand(0, 25) / 100.0);
+                $actualMin   = (int)round($plannedMin * $ratio);
+                $delayMin    = max(0, $actualMin - (int)$plannedMin);
                 $delayStatus = $delayMin > 60 ? 'critical' : ($delayMin > 20 ? 'delayed' : 'normal');
 
                 $startedAt = date('Y-m-d H:i:s', $processTs);
                 $endedAt   = date('Y-m-d H:i:s', $processTs + $actualMin * 60);
 
-                dbExecute(
+                $db->prepare(
                     "UPDATE manufacturing_order_processes SET
                         status='completed', progress_rate=100,
                         actual_minutes=?, actual_start=?, actual_end=?,
                         completed_qty=?, delay_minutes=?, delay_status=?
-                     WHERE id=?",
-                    [$actualMin, $startedAt, $endedAt, $o['qty'],
-                     $delayMin, $delayStatus, $p['id']]
-                );
+                     WHERE id=?"
+                )->execute([$actualMin, $startedAt, $endedAt,
+                            $o['qty'], $delayMin, $delayStatus, $p['id']]);
 
                 [$w1, $w2] = demoWorkers($workerIds, $pi);
                 foreach ([$w1, $w2] as $wi => $empId) {
                     $wStart = $processTs + $wi * 180;
                     $wEnd   = $wStart + $actualMin * 60;
-                    dbExecute(
+                    $db->prepare(
                         "INSERT INTO work_logs
                             (manufacturing_order_id, process_id, employee_id,
                              started_at, ended_at, actual_minutes, completed_qty)
-                         VALUES (?,?,?,?,?,?,?)",
-                        [$o['id'], $p['process_id'], $empId,
-                         date('Y-m-d H:i:s', $wStart),
-                         date('Y-m-d H:i:s', $wEnd),
-                         $actualMin, $o['qty']]
-                    );
+                         VALUES (?,?,?,?,?,?,?)"
+                    )->execute([
+                        $o['id'], $p['process_id'], $empId,
+                        date('Y-m-d H:i:s', $wStart),
+                        date('Y-m-d H:i:s', $wEnd),
+                        $actualMin, $o['qty'],
+                    ]);
                 }
                 $processTs += $actualMin * 60 + 3600;
 
             } elseif ($pi === $doneCount) {
-                // 現在作業中（今日の08:30から）
                 $rate      = 40 + rand(0, 40);
                 $elapsed   = (int)round($plannedMin * $rate / 100);
                 $startedAt = date('Y-m-d 08:30:00');
 
-                dbExecute(
+                $db->prepare(
                     "UPDATE manufacturing_order_processes SET
                         status='in_progress', progress_rate=?,
                         actual_minutes=?, actual_start=?
-                     WHERE id=?",
-                    [$rate, $elapsed, $startedAt, $p['id']]
-                );
+                     WHERE id=?"
+                )->execute([$rate, $elapsed, $startedAt, $p['id']]);
 
                 $worker = $workerIds[$pi % count($workerIds)];
-                // 今日の作業ログ（ended_at = NULL = 進行中）
-                dbExecute(
+                $db->prepare(
                     "INSERT INTO work_logs
                         (manufacturing_order_id, process_id, employee_id,
                          started_at, actual_minutes, completed_qty)
-                     VALUES (?,?,?,?,?,0)",
-                    [$o['id'], $p['process_id'], $worker, $startedAt, $elapsed]
-                );
+                     VALUES (?,?,?,?,?,0)"
+                )->execute([$o['id'], $p['process_id'], $worker, $startedAt, $elapsed]);
             }
         }
         $ipIdx++;
     }
 
-    // ===== 今日の作業実績ログ（管理者でログインした場合もワーカータブに表示） =====
-    // 全社員に今日完了した作業ログを追加（完成注文9・10の最終工程）
-    $completedTodayOrders = array_slice(array_filter(array_values($created), fn($o) => $o['status'] === 'completed'), -2);
-    foreach ($completedTodayOrders as $ci => $o) {
+    // ===== 今日の作業ログ（ワーカータブ表示用） =====
+    $completedOrders = array_values(array_filter($created, fn($o) => $o['status'] === 'completed'));
+    $todayTargets    = array_slice($completedOrders, -2);
+    foreach ($todayTargets as $ci => $o) {
         $lastProc = dbFetchOne(
             "SELECT id, process_id, planned_total_minutes FROM manufacturing_order_processes
              WHERE manufacturing_order_id=? ORDER BY process_sequence DESC LIMIT 1",
@@ -303,17 +348,18 @@ function loadDemoData(int $userId): void {
         $empId      = $workerIds[$ci % count($workerIds)];
         $tStart     = date('Y-m-d 09:00:00');
         $tEnd       = date('Y-m-d H:i:s', strtotime($tStart) + $actualMin * 60);
-        dbExecute(
+        $db->prepare(
             "INSERT INTO work_logs
                 (manufacturing_order_id, process_id, employee_id,
                  started_at, ended_at, actual_minutes, completed_qty, memo)
-             VALUES (?,?,?,?,?,?,?,?) ",
-            [$o['id'], $lastProc['process_id'], $empId,
-             $tStart, $tEnd, $actualMin, $o['qty'], '最終確認']
-        );
+             VALUES (?,?,?,?,?,?,?,?)"
+        )->execute([
+            $o['id'], $lastProc['process_id'], $empId,
+            $tStart, $tEnd, $actualMin, $o['qty'], '最終確認',
+        ]);
     }
 
-    // ===== コスト設定のデモ値 =====
+    // ===== コスト設定デモ値 =====
     $demoSettings = [
         'monthly_salary_total'      => '2800000',
         'monthly_overhead_cost'     => '1200000',
@@ -322,28 +368,17 @@ function loadDemoData(int $userId): void {
         'demo_mode'                 => '1',
     ];
     foreach ($demoSettings as $key => $val) {
-        dbExecute(
+        $db->prepare(
             "INSERT INTO system_settings (setting_key, setting_value, updated_by_user_id)
              VALUES (?, ?, ?)
              ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value),
                                      updated_by_user_id=VALUES(updated_by_user_id),
-                                     updated_at=NOW()",
-            [$key, $val, $userId]
-        );
+                                     updated_at=NOW()"
+        )->execute([$key, $val, $userId]);
     }
 
     auditLog('demo_loaded', 'system_settings', null, null,
         ['orders_created' => count($created)]);
-}
-
-// =====================================================
-// 製造データを全削除（マスターデータは保持）
-// =====================================================
-function clearMfgData(): void {
-    $db = getDB();
-    $db->exec("DELETE FROM work_logs");
-    $db->exec("DELETE FROM manufacturing_order_processes");
-    $db->exec("DELETE FROM manufacturing_orders");
 }
 
 function demoWorkers(array $workerIds, int $idx): array {
@@ -368,9 +403,7 @@ try {
 
 $orderCounts = ['total' => 0, 'completed' => 0, 'in_progress' => 0, 'planned' => 0];
 try {
-    $rows = dbFetchAll(
-        "SELECT status, COUNT(*) AS cnt FROM manufacturing_orders GROUP BY status"
-    );
+    $rows = dbFetchAll("SELECT status, COUNT(*) AS cnt FROM manufacturing_orders GROUP BY status");
     foreach ($rows as $r) {
         $orderCounts['total'] += $r['cnt'];
         if (isset($orderCounts[$r['status']])) {
@@ -391,7 +424,6 @@ require __DIR__ . '/parts/header.php';
 
 <?= getFlashHtml() ?>
 
-<!-- 現在の状態 -->
 <div class="alert <?= $demoMode === '1' ? 'alert-warning' : 'alert-secondary' ?> d-flex align-items-center gap-3 mb-4">
   <i class="bi <?= $demoMode === '1' ? 'bi-play-circle-fill' : 'bi-stop-circle' ?> fs-4"></i>
   <div class="flex-grow-1">
@@ -399,12 +431,11 @@ require __DIR__ . '/parts/header.php';
     &nbsp;|&nbsp;
     製造指示: 全<?= $orderCounts['total'] ?>件
     （完成<strong class="text-success"><?= $orderCounts['completed'] ?></strong>
-     · 仕掛中<strong class="text-primary"><?= $orderCounts['in_progress'] ?></strong>
-     · 計画<strong class="text-info"><?= $orderCounts['planned'] ?></strong>）
+     ・仕掛中<strong class="text-primary"><?= $orderCounts['in_progress'] ?></strong>
+     ・計画<strong class="text-info"><?= $orderCounts['planned'] ?></strong>）
   </div>
 </div>
 
-<!-- 注意事項 -->
 <div class="card border-warning mb-4">
   <div class="card-header bg-warning text-dark fw-bold">
     <i class="bi bi-exclamation-triangle"></i> 注意事項
@@ -428,8 +459,8 @@ require __DIR__ . '/parts/header.php';
       <div class="card-body">
         <p class="text-muted">以下のサンプルデータを作成します：</p>
         <ul class="small mb-3">
-          <li>完成済み受注: <strong>10件</strong>（過去3ヶ月〜今月 / 月別推移グラフに反映）</li>
-          <li>仕掛中: <strong>5件</strong>（各工程が途中まで完了 · 遅延アラートあり）</li>
+          <li>完成済み受注: <strong>10件</strong>（過去3ヶ月〜今月・月別推移グラフに反映）</li>
+          <li>仕掛中: <strong>5件</strong>（工程途中まで完了・遅延アラートあり）</li>
           <li>計画中: <strong>4件</strong>（未着手）</li>
           <li>キャンセル: <strong>1件</strong></li>
           <li>今日の作業ログあり → 稼働状況・本日実績に表示</li>
