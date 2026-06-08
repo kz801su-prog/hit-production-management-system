@@ -10,7 +10,7 @@
  * 作業指示を新規作成する
  * 椅子タイプのスナップショットを保存し、工程標準時間を自動セット
  *
- * @param array $data ['chair_type_id', 'quantity', 'due_date', 'priority', 'memo']
+ * @param array $data ['chair_type_id', 'quantity', 'due_date', 'priority', 'memo', 'customer_name', 'project_name', 'order_date']
  * @return int 作成された作業指示ID
  */
 function createOrder(array $data): int {
@@ -25,11 +25,15 @@ function createOrder(array $data): int {
 
     $orderId = (int)dbExecute(
         "INSERT INTO manufacturing_orders
-            (order_no, chair_type_id, quantity, due_date, priority, memo,
+            (order_no, customer_name, project_name, order_date,
+             chair_type_id, quantity, due_date, priority, memo,
              chair_type_snapshot, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
             $orderNo,
+            $data['customer_name'] ?? null,
+            $data['project_name']  ?? null,
+            $data['order_date']    ?: null,
             $chairTypeId,
             $quantity,
             $data['due_date']  ?: null,
