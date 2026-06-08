@@ -438,4 +438,15 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作履歴（監査ログ）。誰がいつ何を変更したか';
 
+-- =====================================================
+-- システム設定
+-- =====================================================
+CREATE TABLE IF NOT EXISTS system_settings (
+    setting_key VARCHAR(100) NOT NULL PRIMARY KEY,
+    setting_value TEXT NULL,
+    description VARCHAR(255) NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by_user_id INT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='システム設定（管理者が変更するアプリ設定値）';
+
 SET FOREIGN_KEY_CHECKS = 1;

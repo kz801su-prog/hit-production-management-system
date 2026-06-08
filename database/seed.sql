@@ -54,12 +54,18 @@ VALUES
 -- 本番環境では必ず変更すること
 -- =====================================================
 INSERT IGNORE INTO users (employee_id, login_id, password_hash, role) VALUES
-(1, 'president',     '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'president'),
-(2, 'admin',         '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin'),
-(3, 'yamada',        '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'process_leader'),
-(4, 'sato',          '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'worker'),
-(5, 'suzuki',        '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'worker'),
-(7, 'ito',           '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'worker');
+(1, 'president',     '$2y$12$.btR48KIN3s.s.MkqcsGTuJSTKfv1aR79N0nySycKdRizLQbdttkO', 'president'),
+(2, 'admin',         '$2y$12$.btR48KIN3s.s.MkqcsGTuJSTKfv1aR79N0nySycKdRizLQbdttkO', 'admin'),
+(3, 'yamada',        '$2y$12$.btR48KIN3s.s.MkqcsGTuJSTKfv1aR79N0nySycKdRizLQbdttkO', 'process_leader'),
+(4, 'sato',          '$2y$12$.btR48KIN3s.s.MkqcsGTuJSTKfv1aR79N0nySycKdRizLQbdttkO', 'worker'),
+(5, 'suzuki',        '$2y$12$.btR48KIN3s.s.MkqcsGTuJSTKfv1aR79N0nySycKdRizLQbdttkO', 'worker'),
+(7, 'ito',           '$2y$12$.btR48KIN3s.s.MkqcsGTuJSTKfv1aR79N0nySycKdRizLQbdttkO', 'worker');
+
+-- =====================================================
+-- システム設定初期値
+-- =====================================================
+INSERT IGNORE INTO system_settings (setting_key, setting_value, description) VALUES
+('totp_required', '0', 'ログイン時にAuthenticator認証を必須にする（1:必須 / 0:任意）');
 
 -- =====================================================
 -- 工程マスター初期データ

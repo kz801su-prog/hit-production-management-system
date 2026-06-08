@@ -1,48 +1,81 @@
 <?php
 // =====================================================
-// ログインページ
-// 目的: ユーザー認証を行い、セッションを開始する
-// 接続テーブル: users, employees
-// 呼び出し先: dashboard.php
+// ログインページ（二段階認証対応）
+// Step 1: ログインID + パスワード
+// Step 2: Authenticator 6桁コード（TOTP必須時）
 // =====================================================
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../app/db.php';
 require_once __DIR__ . '/../app/auth.php';
 require_once __DIR__ . '/../app/functions.php';
 
-// すでにログイン済みならダッシュボードへ
 if (isLoggedIn()) {
     header('Location: ' . APP_URL . '/dashboard.php');
     exit;
 }
 
-$error = '';
-$msg   = '';
+$error   = '';
+$msg     = '';
+$step    = 1; // 1=パスワード入力, 2=TOTP入力
 
-if ($_GET['msg'] ?? '' === 'timeout') {
+if (($_GET['msg'] ?? '') === 'timeout') {
     $msg = 'セッションがタイムアウトしました。再度ログインしてください。';
 }
 
-// POST処理
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $loginId  = postStr('login_id');
-    $password = postStr('password');
+// TOTP 入力待ち状態なら Step 2 を表示
+if (!empty($_SESSION['totp_pending_user_id'])) {
+    $step = 2;
+}
 
-    if (!$loginId || !$password) {
-        $error = 'ログインIDとパスワードを入力してください。';
-    } else {
-        $user = doLogin($loginId, $password);
-        if ($user) {
+// =====================================================
+// POST 処理
+// =====================================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $postStep = (int)($_POST['step'] ?? 1);
+
+    // --- Step 1: パスワード認証 ---
+    if ($postStep === 1) {
+        $loginId  = trim($_POST['login_id']  ?? '');
+        $password = trim($_POST['password']  ?? '');
+
+        if (!$loginId || !$password) {
+            $error = 'ログインIDとパスワードを入力してください。';
+        } else {
+            $result = doLogin($loginId, $password);
+            if ($result === false) {
+                $error = 'ログインIDまたはパスワードが正しくありません。';
+            } elseif ($result['status'] === 'totp_required') {
+                $step = 2;
+            } elseif ($result['status'] === 'totp_setup') {
+                // ログイン完了（TOTP設定が必要だが強制リダイレクトは requireLogin が行う）
+                header('Location: ' . APP_URL . '/settings.php?tab=totp&msg=setup_required');
+                exit;
+            } else {
+                header('Location: ' . APP_URL . '/dashboard.php');
+                exit;
+            }
+        }
+    }
+
+    // --- Step 2: TOTP 認証 ---
+    if ($postStep === 2) {
+        $code = preg_replace('/\s+/', '', $_POST['totp_code'] ?? '');
+        if (doTotpVerify($code)) {
             header('Location: ' . APP_URL . '/dashboard.php');
             exit;
         } else {
-            $error = 'ログインIDまたはパスワードが正しくありません。';
+            $step  = 2;
+            $error = '認証コードが正しくありません。Authenticator アプリの現在のコードを入力してください。';
         }
     }
 }
 
-// 社長の言葉をランダムに1件取得（ログイン画面に表示）
-$word = dbFetchOne("SELECT * FROM president_words WHERE is_active = 1 ORDER BY RAND() LIMIT 1");
+// 社長の言葉をランダムに1件取得
+try {
+    $word = dbFetchOne("SELECT * FROM president_words WHERE is_active = 1 ORDER BY RAND() LIMIT 1");
+} catch (Exception $e) {
+    $word = null;
+}
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -51,6 +84,7 @@ $word = dbFetchOne("SELECT * FROM president_words WHERE is_active = 1 ORDER BY R
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ログイン - <?= h(APP_NAME) ?></title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/style.css">
 </head>
 <body class="bg-dark">
@@ -58,7 +92,7 @@ $word = dbFetchOne("SELECT * FROM president_words WHERE is_active = 1 ORDER BY R
   <div class="row justify-content-center min-vh-100 align-items-center">
     <div class="col-md-5">
 
-      <!-- アプリタイトル -->
+      <!-- タイトル -->
       <div class="text-center mb-4">
         <h1 class="text-white fw-bold fs-4">
           <i class="bi bi-tools"></i> オーツーファーニチャー<br>
@@ -76,24 +110,23 @@ $word = dbFetchOne("SELECT * FROM president_words WHERE is_active = 1 ORDER BY R
       </div>
       <?php endif; ?>
 
-      <!-- ログインフォーム -->
+      <!-- ログインカード -->
       <div class="card shadow">
+
+        <?php if ($step === 1): ?>
+        <!-- Step 1: パスワード認証 -->
         <div class="card-header bg-primary text-white">
           <h5 class="mb-0"><i class="bi bi-person-lock"></i> ログイン</h5>
         </div>
         <div class="card-body">
-          <?php if ($error): ?>
-          <div class="alert alert-danger"><?= h($error) ?></div>
-          <?php endif; ?>
-          <?php if ($msg): ?>
-          <div class="alert alert-warning"><?= h($msg) ?></div>
-          <?php endif; ?>
-
+          <?php if ($error): ?><div class="alert alert-danger"><?= h($error) ?></div><?php endif; ?>
+          <?php if ($msg):   ?><div class="alert alert-warning"><?= h($msg) ?></div><?php endif; ?>
           <form method="post" action="">
+            <input type="hidden" name="step" value="1">
             <div class="mb-3">
               <label class="form-label fw-bold">ログインID</label>
               <input type="text" name="login_id" class="form-control form-control-lg"
-                     value="<?= h(postStr('login_id')) ?>"
+                     value="<?= h($_POST['login_id'] ?? '') ?>"
                      autocomplete="username" required autofocus>
             </div>
             <div class="mb-4">
@@ -105,10 +138,51 @@ $word = dbFetchOne("SELECT * FROM president_words WHERE is_active = 1 ORDER BY R
               <i class="bi bi-box-arrow-in-right"></i> ログイン
             </button>
           </form>
+          <hr class="my-3">
+          <div class="text-center">
+            <a href="<?= APP_URL ?>/register.php" class="text-muted small">
+              <i class="bi bi-person-plus"></i> 新規アカウント登録申請
+            </a>
+          </div>
         </div>
+
+        <?php else: ?>
+        <!-- Step 2: TOTP 認証 -->
+        <div class="card-header bg-warning text-dark">
+          <h5 class="mb-0"><i class="bi bi-shield-lock"></i> 二段階認証</h5>
+        </div>
+        <div class="card-body">
+          <?php if ($error): ?><div class="alert alert-danger"><?= h($error) ?></div><?php endif; ?>
+          <p class="text-muted small mb-3">
+            Authenticator アプリ（Google Authenticator / Microsoft Authenticator 等）に表示されている
+            <strong>6桁のコード</strong>を入力してください。
+          </p>
+          <form method="post" action="">
+            <input type="hidden" name="step" value="2">
+            <div class="mb-4">
+              <label class="form-label fw-bold">認証コード（6桁）</label>
+              <input type="text" name="totp_code" class="form-control form-control-lg text-center"
+                     maxlength="6" pattern="\d{6}" inputmode="numeric"
+                     autocomplete="one-time-code" required autofocus
+                     placeholder="000000">
+            </div>
+            <button type="submit" class="btn btn-warning btn-lg w-100">
+              <i class="bi bi-check-circle"></i> 認証
+            </button>
+          </form>
+          <hr class="my-3">
+          <div class="text-center">
+            <a href="<?= APP_URL ?>/login.php" onclick="
+              fetch('<?= APP_URL ?>/logout.php', {method:'POST',body:new URLSearchParams({csrf_token:'', cancel:'1'})});
+              " class="text-muted small">
+              <i class="bi bi-arrow-left"></i> ログインに戻る
+            </a>
+          </div>
+        </div>
+        <?php endif; ?>
+
       </div>
 
-      <!-- バージョン情報 -->
       <p class="text-center text-white-50 small mt-3">
         <?= h(APP_NAME) ?> v<?= APP_VERSION ?>
       </p>
@@ -116,5 +190,18 @@ $word = dbFetchOne("SELECT * FROM president_words WHERE is_active = 1 ORDER BY R
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// TOTP コード入力: 6桁入力完了で自動送信
+document.addEventListener('DOMContentLoaded', () => {
+    const totpInput = document.querySelector('[name="totp_code"]');
+    if (totpInput) {
+        totpInput.addEventListener('input', function() {
+            if (this.value.length === 6 && /^\d{6}$/.test(this.value)) {
+                this.closest('form').submit();
+            }
+        });
+    }
+});
+</script>
 </body>
 </html>

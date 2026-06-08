@@ -100,12 +100,34 @@ $user      = getCurrentUser();
       </ul>
       <!-- ログインユーザー情報 -->
       <ul class="navbar-nav">
+        <?php if (isAdmin()): ?>
+        <li class="nav-item">
+          <a class="nav-link" href="<?= APP_URL ?>/admin_settings.php" title="システム設定">
+            <i class="bi bi-sliders"></i>
+            <?php
+            // 承認待ちユーザー数バッジ
+            try {
+                $pendingCount = dbFetchOne("SELECT COUNT(*) AS cnt FROM users WHERE is_active = 0")['cnt'] ?? 0;
+            } catch (Exception $e) { $pendingCount = 0; }
+            if ($pendingCount > 0): ?>
+            <span class="badge bg-warning text-dark"><?= $pendingCount ?></span>
+            <?php endif; ?>
+          </a>
+        </li>
+        <?php endif; ?>
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
             <i class="bi bi-person-circle"></i> <?= h($user['name']) ?>
             <span class="badge bg-secondary ms-1"><?= h(roleLabel($user['role'])) ?></span>
+            <?php if (!empty($user['mfa_enabled'])): ?>
+            <i class="bi bi-shield-check text-success ms-1" title="二段階認証 有効"></i>
+            <?php endif; ?>
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="<?= APP_URL ?>/settings.php">
+              <i class="bi bi-gear"></i> マイ設定
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="<?= APP_URL ?>/logout.php">
               <i class="bi bi-box-arrow-right"></i> ログアウト
             </a></li>
