@@ -204,7 +204,87 @@ $jsDaily   = json_encode(array_values($dailyProduction), JSON_UNESCAPED_UNICODE)
 $jsMonthly = json_encode(array_values($monthlyTrend),    JSON_UNESCAPED_UNICODE);
 
 // =====================================================
-// ワーカータブ用データ（管理者の個人実績 + 部門キュー）
+// 部門タブ用データ
+// =====================================================
+$deptCards = dbFetchAll(
+    "SELECT d.id AS dept_id, d.dept_name, d.display_order,
+            COUNT(DISTINCT e.id) AS emp_cnt,
+            COUNT(DISTINCT CASE WHEN aw.id IS NOT NULL THEN e.id END) AS active_now,
+            COUNT(DISTINCT CASE WHEN DATE(wl.started_at)=? THEN e.id END) AS working_today,
+            ROUND(COALESCE(SUM(
+                CASE WHEN DATE(wl.started_at)=? AND wl.ended_at IS NOT NULL
+                THEN TIMESTAMPDIFF(MINUTE,wl.started_at,wl.ended_at) END
+            ),0)/60,1) AS today_hours,
+            ROUND(COALESCE(SUM(
+                CASE WHEN DATE(wl.started_at) BETWEEN ? AND ? AND wl.ended_at IS NOT NULL
+                THEN TIMESTAMPDIFF(MINUTE,wl.started_at,wl.ended_at) END
+            ),0)/60,1) AS month_hours,
+            COUNT(DISTINCT CASE WHEN DATE(wl.started_at) BETWEEN ? AND ? AND wl.ended_at IS NOT NULL
+                THEN wl.manufacturing_order_id END) AS month_orders
+     FROM departments d
+     LEFT JOIN employees e  ON e.department_id=d.id
+         AND e.employment_status='active' AND e.is_active=1
+     LEFT JOIN work_logs wl ON wl.employee_id=e.id
+     LEFT JOIN work_logs aw ON aw.employee_id=e.id AND aw.ended_at IS NULL
+     GROUP BY d.id, d.dept_name, d.display_order
+     ORDER BY d.display_order",
+    [$today, $today, $monthFrom, $monthTo, $monthFrom, $monthTo]
+);
+
+// 全社員稼働データ
+$allEmpData = dbFetchAll(
+    "SELECT e.id AS emp_id, e.name, e.employee_code,
+            d.dept_name, d.id AS dept_id,
+            pos.position_name,
+            MAX(CASE WHEN wl.ended_at IS NULL THEN 1 ELSE 0 END) AS is_active,
+            ROUND(COALESCE(SUM(
+                CASE WHEN DATE(wl.started_at)=? AND wl.ended_at IS NOT NULL
+                THEN TIMESTAMPDIFF(MINUTE,wl.started_at,wl.ended_at) END
+            ),0)/60,1) AS today_hours,
+            ROUND(COALESCE(SUM(
+                CASE WHEN DATE(wl.started_at) BETWEEN ? AND ? AND wl.ended_at IS NOT NULL
+                THEN TIMESTAMPDIFF(MINUTE,wl.started_at,wl.ended_at) END
+            ),0)/60,1) AS month_hours,
+            COUNT(DISTINCT CASE WHEN DATE(wl.started_at) BETWEEN ? AND ? AND wl.ended_at IS NOT NULL
+                THEN wl.manufacturing_order_id END) AS month_orders,
+            MAX(CASE WHEN DATE(wl.started_at)=? THEN 1 ELSE 0 END) AS worked_today
+     FROM employees e
+     LEFT JOIN departments d   ON e.department_id=d.id
+     LEFT JOIN positions pos   ON e.position_id=pos.id
+     LEFT JOIN work_logs wl    ON wl.employee_id=e.id
+     WHERE e.employment_status='active' AND e.is_active=1
+     GROUP BY e.id, e.name, e.employee_code, d.dept_name, d.id, pos.position_name
+     ORDER BY d.display_order, e.id",
+    [$today, $monthFrom, $monthTo, $monthFrom, $monthTo, $today]
+);
+
+// 全社員の現在進行中作業マップ
+$activeWorkAll = [];
+try {
+    $activeRows = dbFetchAll(
+        "SELECT wl.employee_id, p.process_name, mo.order_no, mo.id AS order_id,
+                TIMESTAMPDIFF(MINUTE,wl.started_at,NOW()) AS elapsed_min,
+                mop.planned_total_minutes
+         FROM work_logs wl
+         JOIN processes p  ON wl.process_id=p.id
+         JOIN manufacturing_orders mo ON wl.manufacturing_order_id=mo.id
+         LEFT JOIN manufacturing_order_processes mop
+             ON mop.manufacturing_order_id=mo.id AND mop.process_id=wl.process_id
+         WHERE wl.ended_at IS NULL"
+    );
+    foreach ($activeRows as $r) {
+        $activeWorkAll[$r['employee_id']] = $r;
+    }
+} catch (Exception $e) {}
+
+// 部門ごとに社員をグループ化
+$empByDept = [];
+foreach ($allEmpData as $emp) {
+    $empByDept[$emp['dept_name'] ?? '未所属'][] = $emp;
+}
+
+// =====================================================
+// 個人タブ用データ（ログイン者自身の実績）
 // =====================================================
 $w_myUser = dbFetchOne(
     "SELECT u.id, e.id AS emp_id, e.name AS emp_name,
@@ -365,12 +445,21 @@ require __DIR__ . '/parts/header.php';
     </button>
   </li>
   <li class="nav-item" role="presentation">
+    <button class="nav-link fw-bold" id="deptTab-btn"
+            data-bs-toggle="tab" data-bs-target="#deptTabPane"
+            type="button" role="tab">
+      <i class="bi bi-diagram-3"></i>
+      <span class="d-none d-sm-inline"> 部門ダッシュボード</span>
+      <span class="d-sm-none"> 部門</span>
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
     <button class="nav-link fw-bold" id="workerTab-btn"
             data-bs-toggle="tab" data-bs-target="#workerTabPane"
             type="button" role="tab">
-      <i class="bi bi-person-workspace"></i>
-      <span class="d-none d-sm-inline"> マイ実績・現場</span>
-      <span class="d-sm-none"> マイ実績</span>
+      <i class="bi bi-people"></i>
+      <span class="d-none d-sm-inline"> 個人ダッシュボード</span>
+      <span class="d-sm-none"> 個人</span>
     </button>
   </li>
 </ul>
@@ -779,271 +868,277 @@ require __DIR__ . '/parts/header.php';
 
 </div><!-- /execTabPane -->
 
-<!-- ===== ワーカータブ ===== -->
-<div class="tab-pane fade" id="workerTabPane" role="tabpanel">
+<!-- ===== 部門タブ ===== -->
+<div class="tab-pane fade" id="deptTabPane" role="tabpanel">
 
-  <!-- 月間サマリー KPI -->
-  <div class="row g-2 mb-3">
-    <div class="col-4">
-      <div class="card worker-kpi p-2 text-center" style="border-color:#0d6efd">
-        <div class="fw-bold fs-5 text-primary"><?= (int)($w_monthSummary['work_days'] ?? 0) ?></div>
-        <div class="small text-muted">今月稼働日数</div>
-      </div>
-    </div>
-    <div class="col-4">
-      <div class="card worker-kpi p-2 text-center" style="border-color:#198754">
-        <div class="fw-bold fs-5 text-success"><?= $w_monthSummary['total_hours'] ?? 0 ?>h</div>
-        <div class="small text-muted">今月作業時間</div>
-      </div>
-    </div>
-    <div class="col-4">
-      <div class="card worker-kpi p-2 text-center" style="border-color:#6f42c1">
-        <div class="fw-bold fs-5" style="color:#6f42c1"><?= (int)($w_monthSummary['order_count'] ?? 0) ?></div>
-        <div class="small text-muted">今月担当指示数</div>
-      </div>
-    </div>
-  </div>
+<div class="d-flex align-items-center mb-3 gap-2">
+  <h2 class="mb-0"><i class="bi bi-diagram-3"></i> 部門ダッシュボード</h2>
+  <small class="text-muted ms-2"><?= date('Y年n月j日', strtotime($today)) ?></small>
+  <button class="ms-auto btn btn-outline-secondary btn-sm" onclick="location.reload()">
+    <i class="bi bi-arrow-clockwise"></i>
+  </button>
+</div>
 
-  <?php if (!empty($w_activeWork)): ?>
-  <!-- 進行中の作業 -->
-  <div class="card mb-3 border-success">
-    <div class="card-header bg-success text-white py-2 fw-bold">
-      <i class="bi bi-play-circle-fill"></i> 現在進行中の作業
-    </div>
-    <div class="card-body p-0">
-    <?php foreach ($w_activeWork as $aw): ?>
-      <?php
-      $elapsed = (int)$aw['elapsed_minutes'];
-      $planned = (int)($aw['planned_total_minutes'] ?? 0);
-      $diffMin = $planned > 0 ? $elapsed - $planned : null;
-      ?>
-      <div class="p-3 border-bottom">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <span class="badge bg-success me-1">稼働中</span>
-            <strong><?= h($aw['process_name']) ?></strong>
-            &mdash;
-            <a href="orders.php?id=<?= $aw['order_id'] ?>" class="text-decoration-none">
-              <?= h($aw['order_no']) ?>
-            </a>
-            <br>
-            <small class="text-muted">
-              <?= h($aw['chair_type_name']) ?> <?= $aw['quantity'] ?>本
-              <?php if ($aw['due_date']): ?>
-                &nbsp;|&nbsp; 納期: <?= formatDate($aw['due_date']) ?>
-              <?php endif; ?>
-            </small>
+<!-- 部門サマリーカード -->
+<div class="row g-3 mb-4">
+<?php foreach ($deptCards as $dept): ?>
+  <?php
+    $util = $dept['emp_cnt'] > 0
+        ? round($dept['working_today'] / $dept['emp_cnt'] * 100)
+        : 0;
+    $utilColor = $util >= 70 ? '#198754' : ($util >= 40 ? '#ffc107' : '#6c757d');
+  ?>
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="card h-100" style="border-left:4px solid <?= $utilColor ?>">
+      <div class="card-header fw-bold d-flex justify-content-between align-items-center py-2">
+        <span><i class="bi bi-building"></i> <?= h($dept['dept_name']) ?></span>
+        <span class="badge" style="background:<?= $utilColor ?>"><?= $util ?>% 稼働</span>
+      </div>
+      <div class="card-body py-2">
+        <div class="row g-2 text-center mb-2">
+          <div class="col-3">
+            <div class="small text-muted">人数</div>
+            <div class="fw-bold"><?= $dept['emp_cnt'] ?>人</div>
           </div>
-          <div class="text-end">
-            <div class="fw-bold fs-5 text-success"><?= formatMinutes($elapsed) ?></div>
-            <?php if ($diffMin !== null): ?>
-            <small class="<?= $diffMin > 0 ? 'diff-over' : 'diff-under' ?>">
-              <?= $diffMin > 0 ? '▲超過 ' . formatMinutes($diffMin) : '▽余裕 ' . formatMinutes(-$diffMin) ?>
-            </small>
-            <?php endif; ?>
+          <div class="col-3">
+            <div class="small text-muted">今作業中</div>
+            <div class="fw-bold text-success"><?= $dept['active_now'] ?>人</div>
+          </div>
+          <div class="col-3">
+            <div class="small text-muted">今日時間</div>
+            <div class="fw-bold"><?= $dept['today_hours'] ?>h</div>
+          </div>
+          <div class="col-3">
+            <div class="small text-muted">月間時間</div>
+            <div class="fw-bold"><?= $dept['month_hours'] ?>h</div>
           </div>
         </div>
-        <?php if ($planned > 0): ?>
-        <div class="progress mt-2" style="height:8px">
-          <?php $pct = min(120, $planned > 0 ? round($elapsed / $planned * 100) : 0); ?>
-          <div class="progress-bar <?= $pct > 100 ? 'bg-danger' : 'bg-success' ?>"
-               style="width:<?= min(100, $pct) ?>%"></div>
+        <!-- 稼働率バー -->
+        <div class="progress" style="height:8px">
+          <div class="progress-bar" role="progressbar"
+               style="width:<?= $util ?>%;background:<?= $utilColor ?>"
+               title="稼働率 <?= $util ?>%"></div>
         </div>
-        <div class="d-flex justify-content-between">
-          <small class="text-muted">開始: <?= formatDatetime($aw['started_at']) ?></small>
-          <small class="text-muted"><?= $pct ?>%</small>
+        <!-- 部門内社員テーブル -->
+        <?php
+          $deptEmps = array_filter($allEmpData, fn($e) => $e['dept_id'] == $dept['dept_id']);
+        ?>
+        <?php if (count($deptEmps)): ?>
+        <div class="table-responsive mt-2" style="max-height:200px;overflow-y:auto">
+          <table class="table table-sm table-hover mb-0" style="font-size:.8rem">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th>氏名</th>
+                <th class="text-center">状態</th>
+                <th>現在工程</th>
+                <th class="text-end">今日h</th>
+                <th class="text-end">月間h</th>
+              </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($deptEmps as $emp): ?>
+              <?php $aw = $activeWorkAll[$emp['emp_id']] ?? null; ?>
+              <tr>
+                <td class="text-nowrap"><?= h($emp['name']) ?></td>
+                <td class="text-center">
+                  <?php if ($aw): ?>
+                    <span class="badge bg-success">作業中</span>
+                  <?php elseif ($emp['worked_today']): ?>
+                    <span class="badge bg-secondary">休憩中</span>
+                  <?php else: ?>
+                    <span class="badge bg-light text-muted border">未開始</span>
+                  <?php endif; ?>
+                </td>
+                <td class="text-nowrap text-truncate" style="max-width:100px">
+                  <?php if ($aw): ?>
+                    <span class="text-success"><?= h($aw['process_name']) ?></span>
+                    <span class="text-muted small">(<?= $aw['elapsed_min'] ?>分)</span>
+                  <?php else: ?>
+                    <span class="text-muted">—</span>
+                  <?php endif; ?>
+                </td>
+                <td class="text-end"><?= $emp['today_hours'] ?></td>
+                <td class="text-end"><?= $emp['month_hours'] ?></td>
+              </tr>
+            <?php endforeach; ?>
+            </tbody>
+          </table>
         </div>
         <?php endif; ?>
       </div>
-    <?php endforeach; ?>
     </div>
   </div>
-  <?php endif; ?>
+<?php endforeach; ?>
+<?php if (empty($deptCards)): ?>
+  <div class="col-12">
+    <div class="alert alert-info"><i class="bi bi-info-circle"></i> 部門データがありません。</div>
+  </div>
+<?php endif; ?>
+</div>
 
-  <div class="row g-3">
+</div><!-- /deptTabPane -->
 
-    <!-- 本日の作業実績 -->
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header py-2 fw-bold d-flex justify-content-between">
-          <span><i class="bi bi-clock-history"></i> 本日の作業実績</span>
-          <span class="text-muted small fw-normal">
-            合計 <strong class="text-dark"><?= formatMinutes($w_todayTotalMinutes) ?></strong>
-            <?php if ($w_todayPlannedTotal > 0): ?>
-              / 計画 <?= formatMinutes($w_todayPlannedTotal) ?>
-            <?php endif; ?>
-          </span>
-        </div>
-        <div class="card-body p-0">
-          <?php if (empty($w_todayLogs)): ?>
-            <div class="p-3 text-center text-muted small">
-              <i class="bi bi-calendar-x"></i> 本日の作業記録なし
-            </div>
-          <?php else: ?>
-            <div class="table-responsive">
-            <table class="table table-sm mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th>工程</th><th>作業指示</th>
-                  <th class="text-end">実績</th><th class="text-end">計画</th>
-                  <th class="text-end">差</th>
-                </tr>
-              </thead>
-              <tbody>
-              <?php foreach ($w_todayLogs as $tl):
-                  $wActual  = (int)$tl['actual_minutes'];
-                  $wPlanned = (int)($tl['planned_total_minutes'] ?? 0);
-                  $wDiff    = $wPlanned > 0 ? $wActual - $wPlanned : null;
-              ?>
-                <tr>
-                  <td><?= h($tl['process_name']) ?></td>
-                  <td>
-                    <a href="orders.php?id=<?= $tl['manufacturing_order_id'] ?>"
-                       class="text-decoration-none small"><?= h($tl['order_no']) ?></a>
-                  </td>
-                  <td class="text-end fw-bold"><?= formatMinutes($wActual) ?></td>
-                  <td class="text-end text-muted">
-                    <?= $wPlanned > 0 ? formatMinutes($wPlanned) : '―' ?>
-                  </td>
-                  <td class="text-end fw-bold">
-                    <?php if ($wDiff !== null): ?>
-                      <span class="<?= $wDiff > 0 ? 'diff-over' : 'diff-under' ?>">
-                        <?= ($wDiff > 0 ? '+' : '') . formatMinutes($wDiff) ?>
-                      </span>
-                    <?php else: ?>
-                      <span class="text-muted">―</span>
-                    <?php endif; ?>
-                  </td>
-                </tr>
-              <?php endforeach; ?>
-              </tbody>
-            </table>
-            </div>
-            <?php
-            $wDiffs = array_filter(array_map(
-                fn($r) => (int)$r['planned_total_minutes'] > 0
-                    ? (int)$r['actual_minutes'] - (int)$r['planned_total_minutes'] : null,
-                $w_todayLogs
-            ), fn($v) => $v !== null);
-            if (!empty($wDiffs)):
-                $wTotalDiff = array_sum($wDiffs);
-            ?>
-            <div class="px-3 py-2 border-top text-end small">
-              本日の計画対比:
-              <strong class="<?= $wTotalDiff > 0 ? 'diff-over' : 'diff-under' ?>">
-                <?= $wTotalDiff > 0 ? '▲超過 ' : '▽前倒し ' ?><?= formatMinutes(abs($wTotalDiff)) ?>
-              </strong>
-            </div>
-            <?php endif; ?>
-          <?php endif; ?>
-        </div>
-      </div>
+<!-- ===== 個人タブ ===== -->
+<div class="tab-pane fade" id="workerTabPane" role="tabpanel">
+
+<div class="d-flex align-items-center mb-3 gap-2 flex-wrap">
+  <h2 class="mb-0"><i class="bi bi-people"></i> 個人ダッシュボード</h2>
+  <small class="text-muted ms-2"><?= date('Y年n月j日', strtotime($today)) ?></small>
+  <div class="ms-auto d-flex gap-2 align-items-center flex-wrap">
+    <select id="indivDeptFilter" class="form-select form-select-sm" style="width:auto">
+      <option value="">全部門</option>
+      <?php foreach ($deptCards as $dc): ?>
+        <option value="<?= h($dc['dept_name']) ?>"><?= h($dc['dept_name']) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <input type="search" id="indivSearch" class="form-control form-control-sm" placeholder="氏名検索" style="width:120px">
+    <button class="btn btn-outline-secondary btn-sm" onclick="location.reload()">
+      <i class="bi bi-arrow-clockwise"></i>
+    </button>
+  </div>
+</div>
+
+<!-- 集計サマリー行 -->
+<?php
+  $totalActive   = count(array_filter($allEmpData, fn($e) => isset($activeWorkAll[$e['emp_id']])));
+  $totalWorkedToday = count(array_filter($allEmpData, fn($e) => $e['worked_today']));
+  $totalEmpCnt   = count($allEmpData);
+  $totalTodayH   = round(array_sum(array_column($allEmpData, 'today_hours')), 1);
+  $totalMonthH   = round(array_sum(array_column($allEmpData, 'month_hours')), 1);
+?>
+<div class="row g-2 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="card worker-kpi p-2 text-center" style="border-color:#0d6efd">
+      <div class="fw-bold fs-5 text-primary"><?= $totalEmpCnt ?></div>
+      <div class="small text-muted">在籍人数</div>
     </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card worker-kpi p-2 text-center" style="border-color:#198754">
+      <div class="fw-bold fs-5 text-success"><?= $totalActive ?></div>
+      <div class="small text-muted">現在作業中</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card worker-kpi p-2 text-center" style="border-color:#ffc107">
+      <div class="fw-bold fs-5 text-warning"><?= $totalTodayH ?>h</div>
+      <div class="small text-muted">全社 今日作業時間</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card worker-kpi p-2 text-center" style="border-color:#6f42c1">
+      <div class="fw-bold fs-5" style="color:#6f42c1"><?= $totalMonthH ?>h</div>
+      <div class="small text-muted">全社 月間作業時間</div>
+    </div>
+  </div>
+</div>
 
-    <!-- 作業キュー（仕掛中・未着手） -->
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header py-2 fw-bold">
-          <i class="bi bi-list-task"></i> 全体の作業キュー
-          <span class="badge bg-secondary ms-1"><?= count($w_deptQueue) ?></span>
-        </div>
-        <div class="card-body p-0">
-          <?php if (empty($w_deptQueue)): ?>
-            <div class="p-3 text-center text-success small">
-              <i class="bi bi-check-circle-fill"></i> 作業キューは空です
-            </div>
-          <?php else: ?>
-            <div class="list-group list-group-flush small">
-            <?php foreach ($w_deptQueue as $q):
-              $qRowClass = match($q['priority'] ?? 'normal') {
-                  'urgent' => 'queue-row-urgent',
-                  'high'   => 'queue-row-high',
-                  default  => '',
-              };
-              $daysLeft = $q['days_left'];
-            ?>
-              <a href="orders.php?id=<?= $q['order_id'] ?>"
-                 class="list-group-item list-group-item-action <?= $qRowClass ?> py-2">
-                <div class="d-flex justify-content-between align-items-start">
-                  <div>
-                    <?= processStatusBadge($q['status']) ?>
-                    <?php if (($q['priority'] ?? 'normal') !== 'normal'): ?>
-                      <?= priorityBadge($q['priority']) ?>
-                    <?php endif; ?>
-                    <strong class="ms-1"><?= h($q['process_name']) ?></strong>
-                    <span class="text-muted"> — <?= h($q['order_no']) ?></span>
-                    <br>
-                    <span class="text-muted">
-                      <?= h($q['customer_name'] ?: $q['chair_type_name']) ?>
-                      <?= $q['quantity'] ?>本
-                    </span>
-                  </div>
-                  <div class="text-end text-nowrap">
-                    <?php if ($q['planned_total_minutes'] > 0): ?>
-                      <span class="badge bg-light text-dark border">
-                        <?= formatMinutes((int)$q['planned_total_minutes']) ?>
-                      </span><br>
-                    <?php endif; ?>
-                    <?php if ($daysLeft !== null): ?>
-                      <small class="<?= $daysLeft <= 0 ? 'text-danger fw-bold' : ($daysLeft <= 2 ? 'text-warning' : 'text-muted') ?>">
-                        <?= $daysLeft <= 0 ? '納期超過' : $daysLeft.'日後' ?>
-                      </small>
-                    <?php endif; ?>
-                  </div>
+<!-- 部門別アコーディオン -->
+<div class="accordion" id="indivAccordion">
+<?php
+$deptIdx = 0;
+foreach ($empByDept as $deptName => $emps):
+  $deptIdx++;
+  $deptActiveCount = count(array_filter($emps, fn($e) => isset($activeWorkAll[$e['emp_id']])));
+  $deptId = 'deptSection_' . $deptIdx;
+?>
+<div class="accordion-item indiv-dept-block" data-dept="<?= h($deptName) ?>">
+  <h2 class="accordion-header">
+    <button class="accordion-button <?= $deptIdx > 1 ? 'collapsed' : '' ?>" type="button"
+            data-bs-toggle="collapse" data-bs-target="#<?= $deptId ?>">
+      <i class="bi bi-building me-2"></i>
+      <strong><?= h($deptName) ?></strong>
+      <span class="ms-2 badge bg-secondary"><?= count($emps) ?>人</span>
+      <?php if ($deptActiveCount): ?>
+        <span class="ms-1 badge bg-success"><?= $deptActiveCount ?>人作業中</span>
+      <?php endif; ?>
+    </button>
+  </h2>
+  <div id="<?= $deptId ?>" class="accordion-collapse collapse <?= $deptIdx === 1 ? 'show' : '' ?>">
+    <div class="accordion-body p-0">
+      <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0 indiv-table">
+        <thead class="table-light">
+          <tr>
+            <th>氏名</th>
+            <th>役職</th>
+            <th class="text-center">状態</th>
+            <th>現在工程</th>
+            <th class="text-end">経過</th>
+            <th class="text-end">今日h</th>
+            <th class="text-end">月間h</th>
+            <th class="text-end">月間指示</th>
+          </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($emps as $emp):
+          $aw = $activeWorkAll[$emp['emp_id']] ?? null;
+          $planned = $aw ? (int)($aw['planned_total_minutes'] ?? 0) : 0;
+          $elapsed = $aw ? (int)$aw['elapsed_min'] : 0;
+          $pct     = ($planned > 0) ? min(120, round($elapsed / $planned * 100)) : 0;
+        ?>
+          <tr class="indiv-emp-row" data-name="<?= h(mb_strtolower($emp['name'])) ?>">
+            <td class="fw-semibold text-nowrap">
+              <?= h($emp['name']) ?>
+              <span class="text-muted small ms-1"><?= h($emp['employee_code']) ?></span>
+            </td>
+            <td class="small text-muted text-nowrap"><?= h($emp['position_name'] ?? '') ?></td>
+            <td class="text-center">
+              <?php if ($aw): ?>
+                <span class="badge bg-success">作業中</span>
+              <?php elseif ($emp['worked_today']): ?>
+                <span class="badge bg-secondary">休憩中</span>
+              <?php else: ?>
+                <span class="badge bg-light text-muted border">未開始</span>
+              <?php endif; ?>
+            </td>
+            <td class="text-nowrap" style="max-width:130px;overflow:hidden;text-overflow:ellipsis">
+              <?php if ($aw): ?>
+                <span class="text-success small">
+                  <?= h($aw['process_name']) ?>
+                  <span class="text-muted">(<?= h($aw['order_no']) ?>)</span>
+                </span>
+                <?php if ($planned > 0): ?>
+                <div class="progress mt-1" style="height:4px;min-width:60px">
+                  <div class="progress-bar <?= $pct > 100 ? 'bg-danger' : 'bg-success' ?>"
+                       style="width:<?= min(100,$pct) ?>%"
+                       title="<?= $pct ?>%"></div>
                 </div>
-              </a>
-            <?php endforeach; ?>
-            </div>
-          <?php endif; ?>
-        </div>
+                <?php endif; ?>
+              <?php else: ?>
+                <span class="text-muted small">—</span>
+              <?php endif; ?>
+            </td>
+            <td class="text-end small">
+              <?php if ($aw): ?>
+                <span class="<?= ($planned > 0 && $elapsed > $planned) ? 'text-danger fw-bold' : 'text-success' ?>">
+                  <?= floor($elapsed/60) ?>h<?= str_pad($elapsed%60,2,'0',STR_PAD_LEFT) ?>m
+                </span>
+              <?php else: ?>
+                <span class="text-muted">—</span>
+              <?php endif; ?>
+            </td>
+            <td class="text-end"><?= $emp['today_hours'] ?></td>
+            <td class="text-end"><?= $emp['month_hours'] ?></td>
+            <td class="text-end"><?= (int)$emp['month_orders'] ?></td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
       </div>
     </div>
+  </div>
+</div>
+<?php endforeach; ?>
+<?php if (empty($allEmpData)): ?>
+  <div class="alert alert-info"><i class="bi bi-info-circle"></i> 社員データがありません。</div>
+<?php endif; ?>
+</div><!-- /accordion -->
 
-    <!-- 職能ランク -->
-    <?php if (!empty($w_skills)): ?>
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header py-2 fw-bold">
-          <i class="bi bi-award-fill text-warning"></i> 私の職能ランク
-        </div>
-        <div class="card-body py-2">
-          <div class="d-flex flex-wrap gap-2">
-            <?php
-            $rankLabels = [1=>'見習',2=>'補助',3=>'一般',4=>'熟練',5=>'マスター'];
-            $rankColors = [1=>'secondary',2=>'info',3=>'primary',4=>'warning',5=>'danger'];
-            foreach ($w_skills as $sk):
-            ?>
-              <span class="badge bg-<?= $rankColors[$sk['rank_level']] ?> fs-6 px-3 py-2">
-                <i class="bi bi-star-fill me-1"></i>
-                <?= h($sk['process_name']) ?>
-                <span class="ms-1 opacity-75"><?= $rankLabels[$sk['rank_level']] ?></span>
-              </span>
-            <?php endforeach; ?>
-          </div>
-        </div>
-      </div>
-    </div>
-    <?php endif; ?>
+  <?php /* $w_ vars still computed above, used here to prevent PHP notices */ ?>
+  <?php $_ = [$w_monthSummary, $w_todayTotalMinutes, $w_todayPlannedTotal, $w_activeWork, $w_todayLogs, $w_deptQueue, $w_skills]; ?>
 
-    <!-- クイックリンク -->
-    <div class="col-12">
-      <div class="d-flex gap-2 flex-wrap">
-        <a href="work_start.php" class="btn btn-success">
-          <i class="bi bi-play-fill"></i> 作業開始
-        </a>
-        <a href="barcode_scan.php" class="btn btn-outline-primary">
-          <i class="bi bi-upc-scan"></i> バーコードスキャン
-        </a>
-        <a href="orders.php" class="btn btn-outline-secondary">
-          <i class="bi bi-clipboard-check"></i> 作業指示一覧
-        </a>
-        <a href="progress_board.php" class="btn btn-outline-secondary">
-          <i class="bi bi-kanban"></i> 進捗ボード
-        </a>
-      </div>
-    </div>
 
-  </div><!-- /row -->
 </div><!-- /workerTabPane -->
 </div><!-- /tab-content -->
 
@@ -1155,6 +1250,36 @@ function togglePresidentWord(){
     if(exp){const lh=parseFloat(getComputedStyle(el).lineHeight)||22; el.style.maxHeight=(lh*2+4)+'px'; btn.innerHTML='続きを読む <i class="bi bi-chevron-down"></i>';}
     else{el.style.maxHeight=el.scrollHeight+'px'; btn.innerHTML='閉じる <i class="bi bi-chevron-up"></i>';}
 }
+
+// 個人タブ: 部門フィルター + 氏名検索
+(function(){
+    const deptSel  = document.getElementById('indivDeptFilter');
+    const nameInp  = document.getElementById('indivSearch');
+    function applyFilter(){
+        const dept = (deptSel ? deptSel.value.toLowerCase() : '');
+        const name = (nameInp ? nameInp.value.toLowerCase() : '');
+        document.querySelectorAll('.indiv-dept-block').forEach(function(block){
+            const blockDept = block.dataset.dept.toLowerCase();
+            const deptMatch = !dept || blockDept.includes(dept);
+            let anyRow = false;
+            block.querySelectorAll('.indiv-emp-row').forEach(function(row){
+                const nameMatch = !name || row.dataset.name.includes(name);
+                const show = deptMatch && nameMatch;
+                row.style.display = show ? '' : 'none';
+                if(show) anyRow = true;
+            });
+            block.style.display = deptMatch ? '' : 'none';
+            if(deptMatch && name){
+                const collapse = block.querySelector('.accordion-collapse');
+                if(collapse && anyRow && !collapse.classList.contains('show')){
+                    bootstrap.Collapse.getOrCreateInstance(collapse).show();
+                }
+            }
+        });
+    }
+    if(deptSel) deptSel.addEventListener('change', applyFilter);
+    if(nameInp) nameInp.addEventListener('input', applyFilter);
+})();
 JSCODE;
 require __DIR__ . '/parts/footer.php';
 ?>
