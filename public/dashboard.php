@@ -82,6 +82,66 @@ $efficiencyData = dbFetchAll(
 // 社長の言葉（ランダム）
 $word = dbFetchOne("SELECT * FROM president_words WHERE is_active = 1 ORDER BY RAND() LIMIT 1");
 
+// ===== コスト集計（社長・admin のみ） =====
+$costKpi = null;
+if (isPresidentOrAdmin()) {
+    try {
+        $costRows = dbFetchAll(
+            "SELECT setting_key, setting_value FROM system_settings
+             WHERE setting_key IN ('cost_target_month','monthly_salary_total','monthly_overhead_cost')"
+        );
+        $costConf = array_column($costRows, 'setting_value', 'setting_key');
+        $costMonth    = $costConf['cost_target_month'] ?? date('Y-m');
+        if (!$costMonth) $costMonth = date('Y-m');
+        $salaryTotal  = (int)($costConf['monthly_salary_total']  ?? 0);
+        $overheadCost = (int)($costConf['monthly_overhead_cost'] ?? 0);
+
+        // 対象月の完成本数（completed）
+        $monthFrom = $costMonth . '-01';
+        $monthTo   = date('Y-m-t', strtotime($monthFrom));
+        $completedQty = (int)(dbFetchOne(
+            "SELECT COALESCE(SUM(quantity),0) AS qty FROM manufacturing_orders
+             WHERE status='completed'
+               AND DATE(updated_at) BETWEEN ? AND ?",
+            [$monthFrom, $monthTo]
+        )['qty'] ?? 0);
+
+        // 在籍社員数
+        $activeEmpCount = (int)(dbFetchOne(
+            "SELECT COUNT(*) AS cnt FROM employees WHERE is_active=1 AND employment_status='active'"
+        )['cnt'] ?? 0);
+
+        // 部門別社員数と作業時間
+        $deptBreakdown = dbFetchAll(
+            "SELECT d.dept_name,
+                    COUNT(DISTINCT e.id) AS emp_cnt,
+                    ROUND(COALESCE(SUM(TIMESTAMPDIFF(MINUTE, wl.started_at, wl.ended_at)),0) / 60.0, 1) AS work_hours
+             FROM employees e
+             JOIN departments d ON e.department_id = d.id
+             LEFT JOIN work_logs wl ON wl.employee_id = e.id
+                 AND wl.ended_at IS NOT NULL
+                 AND DATE(wl.started_at) BETWEEN ? AND ?
+             WHERE e.is_active=1 AND e.employment_status='active'
+             GROUP BY d.id, d.dept_name
+             ORDER BY d.display_order",
+            [$monthFrom, $monthTo]
+        );
+
+        $costPerUnit  = $completedQty > 0 ? ($salaryTotal + $overheadCost) / $completedQty : null;
+        $salaryPerUnit = $completedQty > 0 ? $salaryTotal / $completedQty : null;
+        $overheadPerUnit = $completedQty > 0 ? $overheadCost / $completedQty : null;
+        $perPersonUnits = $activeEmpCount > 0 ? round($completedQty / $activeEmpCount, 1) : null;
+
+        $costKpi = compact(
+            'costMonth','salaryTotal','overheadCost','completedQty',
+            'activeEmpCount','deptBreakdown',
+            'costPerUnit','salaryPerUnit','overheadPerUnit','perPersonUnits'
+        );
+    } catch (Exception $e) {
+        // system_settingsが未適用の場合はスキップ
+    }
+}
+
 // ガントチャート期間設定
 $ganttPeriod = $_GET['gantt_period'] ?? 'week';
 switch ($ganttPeriod) {
@@ -243,6 +303,121 @@ require __DIR__ . '/parts/header.php';
       </div>
     </div>
   </div>
+
+  <?php if ($costKpi): ?>
+  <!-- コスト管理（社長・admin のみ表示） -->
+  <div class="col-12">
+    <div class="card border-warning">
+      <div class="card-header bg-warning fw-bold d-flex align-items-center gap-2">
+        <i class="bi bi-currency-yen"></i>
+        コスト管理
+        <span class="fw-normal small ms-1">対象月: <?= h($costKpi['costMonth']) ?></span>
+        <a href="admin_settings.php#cost" class="btn btn-sm btn-outline-dark ms-auto">
+          <i class="bi bi-gear"></i> 設定
+        </a>
+      </div>
+      <div class="card-body">
+        <!-- 全体KPI -->
+        <div class="row g-2 mb-3">
+          <div class="col-6 col-md-2">
+            <div class="text-center border rounded p-2">
+              <div class="fw-bold fs-5"><?= number_format($costKpi['completedQty']) ?>本</div>
+              <div class="small text-muted">月間完成本数</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="text-center border rounded p-2">
+              <div class="fw-bold fs-5"><?= $costKpi['perPersonUnits'] ?? '―' ?>本</div>
+              <div class="small text-muted">1人あたり本数</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="text-center border rounded p-2 bg-light">
+              <div class="fw-bold fs-5 text-primary">
+                <?= $costKpi['salaryPerUnit'] !== null
+                    ? '¥' . number_format((int)$costKpi['salaryPerUnit'])
+                    : '―' ?>
+              </div>
+              <div class="small text-muted">1本あたり給与費</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="text-center border rounded p-2 bg-light">
+              <div class="fw-bold fs-5 text-info">
+                <?= $costKpi['overheadPerUnit'] !== null
+                    ? '¥' . number_format((int)$costKpi['overheadPerUnit'])
+                    : '―' ?>
+              </div>
+              <div class="small text-muted">1本あたり管理費</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="text-center border rounded p-2 bg-warning bg-opacity-25">
+              <div class="fw-bold fs-5 text-danger">
+                <?= $costKpi['costPerUnit'] !== null
+                    ? '¥' . number_format((int)$costKpi['costPerUnit'])
+                    : '―' ?>
+              </div>
+              <div class="small text-muted">1本あたりコスト合計</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="text-center border rounded p-2">
+              <div class="small text-muted mb-1">給与 ¥<?= number_format($costKpi['salaryTotal']) ?></div>
+              <div class="small text-muted">管理費 ¥<?= number_format($costKpi['overheadCost']) ?></div>
+            </div>
+          </div>
+        </div>
+
+        <?php if ($costKpi['completedQty'] === 0): ?>
+          <div class="alert alert-warning small py-2 mb-0">
+            対象月（<?= h($costKpi['costMonth']) ?>）に完成した作業指示がありません。
+            コストを入力するには <a href="admin_settings.php#cost">設定ページ</a> で月と金額を設定してください。
+          </div>
+        <?php else: ?>
+        <!-- 部門別内訳 -->
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered mb-0">
+            <thead class="table-dark text-center">
+              <tr>
+                <th>部門</th>
+                <th>社員数</th>
+                <th>作業時間</th>
+                <th>社員比率</th>
+                <th>部門給与費</th>
+                <th>1人あたり本数</th>
+              </tr>
+            </thead>
+            <tbody>
+            <?php
+            $totalEmp = max(1, $costKpi['activeEmpCount']);
+            foreach ($costKpi['deptBreakdown'] as $db):
+                $ratio       = $db['emp_cnt'] / $totalEmp;
+                $deptSalary  = (int)($costKpi['salaryTotal'] * $ratio);
+                $deptUnits   = $db['emp_cnt'] > 0
+                    ? round($costKpi['completedQty'] * $ratio, 1)
+                    : 0;
+                $perPerson   = $db['emp_cnt'] > 0
+                    ? round($deptUnits / $db['emp_cnt'], 1)
+                    : '―';
+            ?>
+              <tr>
+                <td><?= h($db['dept_name']) ?></td>
+                <td class="text-center"><?= $db['emp_cnt'] ?>名</td>
+                <td class="text-end"><?= $db['work_hours'] ?>h</td>
+                <td class="text-end"><?= round($ratio * 100, 1) ?>%</td>
+                <td class="text-end">¥<?= number_format($deptSalary) ?></td>
+                <td class="text-end"><?= $perPerson ?>本</td>
+              </tr>
+            <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+  <?php endif; ?>
 
   <!-- ガントチャート（期間ボタン付き） -->
   <div class="col-12">

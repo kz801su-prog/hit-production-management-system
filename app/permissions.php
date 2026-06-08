@@ -50,6 +50,14 @@ function isAdmin(): bool {
 }
 
 /**
+ * 社長または管理者かどうか（コスト設定など機密情報の閲覧に使用）
+ */
+function isPresidentOrAdmin(): bool {
+    $user = getCurrentUser();
+    return in_array($user['role'], ['president', 'admin'], true);
+}
+
+/**
  * 工場長以上かどうか
  */
 function isManager(): bool {

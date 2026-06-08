@@ -76,8 +76,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+    // コスト設定の更新（社長・admin のみ）
+    if ($postAction === 'update_costs' && isPresidentOrAdmin()) {
+        $costMonth    = postStr('cost_target_month');
+        $salaryTotal  = (int)str_replace([',','，'], '', postStr('monthly_salary_total'));
+        $overheadCost = (int)str_replace([',','，'], '', postStr('monthly_overhead_cost'));
+        $userId = getCurrentUser()['id'];
+
+        foreach ([
+            'cost_target_month'   => $costMonth,
+            'monthly_salary_total'  => (string)$salaryTotal,
+            'monthly_overhead_cost' => (string)$overheadCost,
+        ] as $key => $val) {
+            dbExecute(
+                "INSERT INTO system_settings (setting_key, setting_value, updated_by_user_id)
+                 VALUES (?, ?, ?)
+                 ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value),
+                                         updated_by_user_id=VALUES(updated_by_user_id),
+                                         updated_at=NOW()",
+                [$key, $val, $userId]
+            );
+        }
+        auditLog('update_setting', 'system_settings', null, null,
+            ['cost_target_month' => $costMonth, 'salary' => $salaryTotal, 'overhead' => $overheadCost]);
+        setFlash('コスト設定を保存しました。');
+        header('Location: ' . APP_URL . '/admin_settings.php#cost');
+        exit;
+    }
+
 // 現在の設定値
 $totpRequired = isTotpRequired();
+
+// コスト設定（社長・admin のみ読み込む）
+$costSettings = [];
+if (isPresidentOrAdmin()) {
+    try {
+        $rows = dbFetchAll(
+            "SELECT setting_key, setting_value FROM system_settings
+             WHERE setting_key IN ('cost_target_month','monthly_salary_total','monthly_overhead_cost')"
+        );
+        foreach ($rows as $r) {
+            $costSettings[$r['setting_key']] = $r['setting_value'];
+        }
+    } catch (Exception $e) {}
+}
 
 // 承認待ちユーザー一覧（is_active=0）
 $pendingUsers = dbFetchAll(
@@ -199,5 +241,54 @@ require __DIR__ . '/parts/header.php';
     <?php endif; ?>
   </div>
 </div>
+
+<?php if (isPresidentOrAdmin()): ?>
+<!-- ===== コスト設定 ===== -->
+<div class="card mt-4" id="cost">
+  <div class="card-header fw-bold">
+    <i class="bi bi-currency-yen"></i> コスト設定
+    <span class="badge bg-danger ms-2">社長・Admin 限定</span>
+  </div>
+  <div class="card-body">
+    <form method="post">
+      <?= csrfField() ?>
+      <input type="hidden" name="action" value="update_costs">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">計算対象月</label>
+          <input type="month" name="cost_target_month" class="form-control"
+                 value="<?= h($costSettings['cost_target_month'] ?? date('Y-m')) ?>">
+          <div class="form-text">空白 = 当月</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">月間給与総額（円）</label>
+          <div class="input-group">
+            <span class="input-group-text">¥</span>
+            <input type="number" name="monthly_salary_total" class="form-control"
+                   value="<?= h($costSettings['monthly_salary_total'] ?? '0') ?>"
+                   min="0" step="1000">
+          </div>
+          <div class="form-text">全社員の給与・賞与合計</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">月間管理費（円）</label>
+          <div class="input-group">
+            <span class="input-group-text">¥</span>
+            <input type="number" name="monthly_overhead_cost" class="form-control"
+                   value="<?= h($costSettings['monthly_overhead_cost'] ?? '0') ?>"
+                   min="0" step="1000">
+          </div>
+          <div class="form-text">光熱費・家賃・設備費など</div>
+        </div>
+      </div>
+      <div class="mt-3">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-save"></i> コスト設定を保存
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+<?php endif; ?>
 
 <?php require __DIR__ . '/parts/footer.php'; ?>
