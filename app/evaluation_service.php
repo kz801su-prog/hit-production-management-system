@@ -156,7 +156,7 @@ function getEvaluationList(string $targetMonth): array {
          LEFT JOIN monthly_worker_scores s
              ON s.employee_id = e.id AND s.target_month = ?
          WHERE e.is_active = 1 AND e.employment_status = 'active'
-         ORDER BY s.total_score DESC NULLS LAST, e.employee_code",
+         ORDER BY ISNULL(s.total_score), s.total_score DESC, e.employee_code",
         [$targetMonth]
     );
 }
