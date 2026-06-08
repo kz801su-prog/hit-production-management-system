@@ -13,17 +13,20 @@ require_once __DIR__ . '/../app/functions.php';
 
 requireLogin();
 $pageTitle = 'ガントチャート';
+$embed     = !empty($_GET['embed']);
 
 $orderId   = getInt('order_id');
 $dateFrom  = $_GET['date_from'] ?? date('Y-m-d');
 $dateTo    = $_GET['date_to']   ?? date('Y-m-d', strtotime('+7 days'));
 
-// 表示対象の作業指示を取得
+// 表示対象の作業指示を取得（期間にかかる納期のもの）
 $sql = "SELECT mo.id, mo.order_no, mo.priority, ct.chair_type_name
         FROM manufacturing_orders mo
         JOIN chair_types ct ON mo.chair_type_id = ct.id
-        WHERE mo.status IN ('planned','in_progress')";
-$params = [];
+        WHERE mo.status IN ('planned','in_progress')
+          AND (mo.due_date IS NULL OR mo.due_date >= ?)
+          AND (mo.created_at <= ? OR mo.status = 'in_progress')";
+$params = [$dateFrom, $dateTo . ' 23:59:59'];
 if ($orderId) {
     $sql .= " AND mo.id = ?";
     $params[] = $orderId;
@@ -47,10 +50,20 @@ foreach ($orders as $o) {
         'processes' => $processes,
     ];
 }
-
-require __DIR__ . '/parts/header.php';
 ?>
-
+<?php if ($embed): ?>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/style.css">
+  <title>ガントチャート</title>
+  <style>body{overflow:hidden;background:#fff;}</style>
+</head>
+<body class="p-2">
+<?php else: require __DIR__ . '/parts/header.php'; ?>
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h2><i class="bi bi-bar-chart-steps"></i> ガントチャート</h2>
   <div>
@@ -63,6 +76,7 @@ require __DIR__ . '/parts/header.php';
     </form>
   </div>
 </div>
+<?php endif; ?>
 
 <!-- 凡例 -->
 <div class="mb-3 d-flex flex-wrap gap-2">
@@ -84,6 +98,18 @@ $jsData = json_encode([
     'dateTo'    => $dateTo,
     'ganttData' => $ganttData,
 ], JSON_UNESCAPED_UNICODE);
+if ($embed): ?>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="<?= APP_URL ?>/assets/js/main.js"></script>
+<script>
+(function(){
+  const raw = <?= $jsData ?>;
+  if (typeof renderGantt === 'function') renderGantt('ganttContainer', raw);
+})();
+</script>
+</body></html>
+<?php else:
 $extraJs = <<<JS
 (function(){
   const raw = {$jsData};
@@ -91,4 +117,5 @@ $extraJs = <<<JS
 })();
 JS;
 require __DIR__ . '/parts/footer.php';
+endif;
 ?>

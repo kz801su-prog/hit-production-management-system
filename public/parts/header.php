@@ -58,6 +58,15 @@ $user      = getCurrentUser();
             <?php endif; ?>
             <li><a class="dropdown-item" href="<?= APP_URL ?>/progress_board.php">進捗ボード</a></li>
             <li><a class="dropdown-item" href="<?= APP_URL ?>/gantt.php">ガントチャート</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="<?= APP_URL ?>/barcode_scan.php">
+              <i class="bi bi-upc-scan"></i> バーコードスキャン
+            </a></li>
+            <?php if (isLeader()): ?>
+            <li><a class="dropdown-item" href="<?= APP_URL ?>/barcode_print.php">
+              <i class="bi bi-printer"></i> バーコード印刷
+            </a></li>
+            <?php endif; ?>
           </ul>
         </li>
         <!-- 作業実績 -->

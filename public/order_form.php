@@ -28,6 +28,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'due_date'      => postStr('due_date'),
         'priority'      => postStr('priority', 'normal'),
         'memo'          => postStr('memo'),
+        'customer_name' => postStr('customer_name'),
+        'project_name'  => postStr('project_name'),
+        'order_date'    => postStr('order_date'),
     ];
 
     if (!$data['chair_type_id'] || $data['quantity'] < 1) {
@@ -98,9 +101,26 @@ require __DIR__ . '/parts/header.php';
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label">納期</label>
-            <input type="date" name="due_date" class="form-control"
-                   min="<?= date('Y-m-d') ?>">
+            <label class="form-label">顧客名</label>
+            <input type="text" name="customer_name" class="form-control"
+                   placeholder="例: 株式会社ABC">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">物件名（現場名）</label>
+            <input type="text" name="project_name" class="form-control"
+                   placeholder="例: ○○オフィス改装">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">受注日</label>
+              <input type="date" name="order_date" class="form-control"
+                     value="<?= date('Y-m-d') ?>">
+            </div>
+            <div class="col-6">
+              <label class="form-label">納期</label>
+              <input type="date" name="due_date" class="form-control"
+                     min="<?= date('Y-m-d') ?>">
+            </div>
           </div>
           <div class="mb-3">
             <label class="form-label">優先度</label>
@@ -113,7 +133,7 @@ require __DIR__ . '/parts/header.php';
           <div class="mb-3">
             <label class="form-label">メモ</label>
             <textarea name="memo" class="form-control" rows="2"
-                      placeholder="特記事項・顧客情報など"></textarea>
+                      placeholder="特記事項など"></textarea>
           </div>
           <div class="d-flex gap-2">
             <button type="button" class="btn btn-outline-secondary" onclick="previewStdTime()">

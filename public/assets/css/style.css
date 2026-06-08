@@ -5,9 +5,15 @@
 /* フォント */
 body {
   font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', 'Yu Gothic', sans-serif;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   background-color: #f8f9fa;
 }
+
+h2 { font-size: 1.3rem; }
+h3 { font-size: 1.15rem; }
+
+.card-header { font-size: 0.85rem; }
+.nav-link    { font-size: 0.85rem; }
 
 /* ナビゲーション */
 .navbar-brand {
