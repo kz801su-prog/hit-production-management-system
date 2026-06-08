@@ -74,7 +74,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: ' . APP_URL . '/admin_settings.php');
         exit;
     }
-}
+
+    // デモモード切替（社長・admin のみ）
+    if ($postAction === 'toggle_demo' && isPresidentOrAdmin()) {
+        $val = postStr('demo_mode') === '1' ? '1' : '0';
+        dbExecute(
+            "INSERT INTO system_settings (setting_key, setting_value, updated_by_user_id)
+             VALUES ('demo_mode', ?, ?)
+             ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value),
+                                     updated_by_user_id=VALUES(updated_by_user_id),
+                                     updated_at=NOW()",
+            [$val, getCurrentUser()['id']]
+        );
+        auditLog('update_setting', 'system_settings', null, null, ['demo_mode' => $val]);
+        setFlash('デモモードを' . ($val === '1' ? 'ON' : 'OFF') . 'にしました。');
+        header('Location: ' . APP_URL . '/admin_settings.php#demo');
+        exit;
+    }
 
     // コスト設定の更新（社長・admin のみ）
     if ($postAction === 'update_costs' && isPresidentOrAdmin()) {
@@ -105,6 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: ' . APP_URL . '/admin_settings.php#cost');
         exit;
     }
+}
 
 // 現在の設定値
 $totpRequired = isTotpRequired();
@@ -302,6 +319,61 @@ require __DIR__ . '/parts/header.php';
         </button>
       </div>
     </form>
+  </div>
+</div>
+<?php endif; ?>
+
+<?php if (isPresidentOrAdmin()): ?>
+<!-- ===== デモモード設定 ===== -->
+<?php
+$demoMode = '0';
+try {
+    $demoMode = dbFetchOne(
+        "SELECT setting_value FROM system_settings WHERE setting_key='demo_mode'"
+    )['setting_value'] ?? '0';
+} catch (Exception $e) {}
+?>
+<div class="card mt-4" id="demo">
+  <div class="card-header fw-bold">
+    <i class="bi bi-play-circle"></i> デモモード設定
+    <span class="badge bg-danger ms-2">社長・Admin 限定</span>
+    <?php if ($demoMode === '1'): ?>
+      <span class="badge bg-warning text-dark ms-1">現在 ON</span>
+    <?php endif; ?>
+  </div>
+  <div class="card-body">
+    <div class="row align-items-start g-3">
+      <div class="col-md-7">
+        <p class="mb-2">
+          デモモードを <strong>ON</strong> にすると、全ページの上部に
+          「デモモード稼働中」バナーが表示されます。<br>
+          プレゼンや動作確認の際に利用してください。
+        </p>
+        <p class="text-muted small mb-0">
+          ※ デモデータの読み込み時に自動的に ON になります。
+        </p>
+      </div>
+      <div class="col-md-3">
+        <form method="post" action="">
+          <?= csrfField() ?>
+          <input type="hidden" name="action" value="toggle_demo">
+          <input type="hidden" name="demo_mode" value="<?= $demoMode === '1' ? '0' : '1' ?>">
+          <button type="submit"
+                  class="btn <?= $demoMode === '1' ? 'btn-outline-secondary' : 'btn-warning' ?> w-100">
+            <?php if ($demoMode === '1'): ?>
+              <i class="bi bi-stop-circle"></i> デモモードを OFF にする
+            <?php else: ?>
+              <i class="bi bi-play-circle"></i> デモモードを ON にする
+            <?php endif; ?>
+          </button>
+        </form>
+      </div>
+      <div class="col-md-2">
+        <a href="<?= APP_URL ?>/demo_load.php" class="btn btn-outline-warning w-100">
+          <i class="bi bi-database-gear"></i> デモデータ管理
+        </a>
+      </div>
+    </div>
   </div>
 </div>
 <?php endif; ?>

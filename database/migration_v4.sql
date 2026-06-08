@@ -38,4 +38,5 @@ INSERT IGNORE INTO system_settings (setting_key, setting_value, description) VAL
 ('monthly_salary_total',      '0', '月間給与総額（円）'),
 ('monthly_overhead_cost',     '0', '月間管理費（円）'),
 ('cost_target_month',         '',  'コスト計算対象月（YYYY-MM 空欄=当月）'),
-('monthly_production_target', '0', '月間生産目標本数（0=自動計算）');
+('monthly_production_target', '0', '月間生産目標本数（0=自動計算）'),
+('demo_mode',                 '0', 'デモモード（1:ON / 0:OFF）');

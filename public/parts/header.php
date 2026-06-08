@@ -146,5 +146,27 @@ $user      = getCurrentUser();
     </div>
   </div>
 </nav>
+<?php
+// デモモードバナー
+$_demoBanner = false;
+try {
+    $_demoBanner = (dbFetchOne(
+        "SELECT setting_value FROM system_settings WHERE setting_key='demo_mode'"
+    )['setting_value'] ?? '0') === '1';
+} catch (Exception $e) {}
+?>
 <div class="container-fluid py-3">
+<?php if ($_demoBanner): ?>
+<div class="alert alert-warning alert-dismissible d-flex align-items-center py-2 mb-3 rounded-0 border-0 border-bottom border-warning" role="alert" style="margin:-12px -12px 0 -12px; padding-left:1rem;">
+  <i class="bi bi-play-circle-fill me-2 fs-5"></i>
+  <strong>デモモード稼働中</strong>
+  <span class="ms-2 text-muted small">このデータはデモ用サンプルです。</span>
+  <?php if (isPresidentOrAdmin()): ?>
+  <a href="<?= APP_URL ?>/admin_settings.php#demo" class="ms-3 btn btn-sm btn-outline-warning py-0">
+    <i class="bi bi-gear"></i> 設定
+  </a>
+  <?php endif; ?>
+  <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+</div>
+<?php endif; ?>
 <?= getFlashHtml() ?>
