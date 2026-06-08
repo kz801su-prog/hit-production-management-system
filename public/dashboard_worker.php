@@ -88,7 +88,7 @@ $deptQueue = [];
 if ($deptId) {
     $deptQueue = dbFetchAll(
         "SELECT mop.id AS mop_id, mop.status, mop.planned_total_minutes,
-                mop.actual_start_time, mop.actual_end_time,
+                mop.actual_start, mop.actual_end,
                 p.process_name, p.process_code,
                 mo.order_no, mo.due_date, mo.priority, mo.quantity,
                 mo.id AS order_id, mo.customer_name, mo.project_name,

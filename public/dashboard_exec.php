@@ -203,6 +203,103 @@ switch ($ganttPeriod) {
 $jsDaily   = json_encode(array_values($dailyProduction), JSON_UNESCAPED_UNICODE);
 $jsMonthly = json_encode(array_values($monthlyTrend),    JSON_UNESCAPED_UNICODE);
 
+// =====================================================
+// ワーカータブ用データ（管理者の個人実績 + 部門キュー）
+// =====================================================
+$w_myUser = dbFetchOne(
+    "SELECT u.id, e.id AS emp_id, e.name AS emp_name,
+            e.department_id, d.dept_name
+     FROM users u
+     LEFT JOIN employees e ON u.employee_id = e.id
+     LEFT JOIN departments d ON e.department_id = d.id
+     WHERE u.id = ?",
+    [$currentUser['id']]
+);
+$w_empId   = $w_myUser['emp_id']        ?? null;
+$w_deptId  = $w_myUser['department_id'] ?? null;
+$w_empName = $w_myUser['emp_name']      ?? $currentUser['name'];
+
+// 進行中の作業（自分）
+$w_activeWork = $w_empId ? dbFetchAll(
+    "SELECT wl.id AS wl_id, wl.started_at,
+            TIMESTAMPDIFF(MINUTE, wl.started_at, NOW()) AS elapsed_minutes,
+            p.process_name, mo.order_no, mo.quantity,
+            ct.chair_type_name, mo.due_date, mo.id AS order_id,
+            mop.planned_total_minutes
+     FROM work_logs wl
+     JOIN processes p ON wl.process_id = p.id
+     JOIN manufacturing_orders mo ON wl.manufacturing_order_id = mo.id
+     JOIN chair_types ct ON mo.chair_type_id = ct.id
+     LEFT JOIN manufacturing_order_processes mop
+         ON mop.manufacturing_order_id = mo.id AND mop.process_id = wl.process_id
+     WHERE wl.employee_id = ? AND wl.ended_at IS NULL
+     ORDER BY wl.started_at DESC",
+    [$w_empId]
+) : [];
+
+// 本日の作業実績（自分）
+$w_todayLogs = $w_empId ? dbFetchAll(
+    "SELECT wl.*,
+            TIMESTAMPDIFF(MINUTE, wl.started_at, COALESCE(wl.ended_at, NOW())) AS actual_minutes,
+            p.process_name, mo.order_no, ct.chair_type_name,
+            mop.planned_total_minutes
+     FROM work_logs wl
+     JOIN processes p ON wl.process_id = p.id
+     JOIN manufacturing_orders mo ON wl.manufacturing_order_id = mo.id
+     JOIN chair_types ct ON mo.chair_type_id = ct.id
+     LEFT JOIN manufacturing_order_processes mop
+         ON mop.manufacturing_order_id = mo.id AND mop.process_id = wl.process_id
+     WHERE wl.employee_id = ? AND DATE(wl.started_at) = CURDATE()
+     ORDER BY wl.started_at DESC",
+    [$w_empId]
+) : [];
+
+// 今月の実績サマリー（自分）
+$w_monthSummary = $w_empId ? dbFetchOne(
+    "SELECT COUNT(DISTINCT wl.manufacturing_order_id) AS order_count,
+            ROUND(SUM(TIMESTAMPDIFF(MINUTE, wl.started_at, wl.ended_at)) / 60.0, 1) AS total_hours,
+            COUNT(DISTINCT DATE(wl.started_at)) AS work_days
+     FROM work_logs wl
+     WHERE wl.employee_id = ? AND wl.ended_at IS NOT NULL
+       AND DATE(wl.started_at) BETWEEN ? AND ?",
+    [$w_empId, $monthFrom, $monthTo]
+) : null;
+
+// 部門の作業キュー（仕掛中・未着手）
+$w_deptQueue = dbFetchAll(
+    "SELECT mop.id AS mop_id, mop.status, mop.planned_total_minutes,
+            p.process_name, p.process_code,
+            mo.order_no, mo.due_date, mo.priority, mo.quantity,
+            mo.id AS order_id, mo.customer_name, mo.project_name,
+            ct.chair_type_name,
+            DATEDIFF(mo.due_date, CURDATE()) AS days_left
+     FROM manufacturing_order_processes mop
+     JOIN processes p ON mop.process_id = p.id
+     JOIN manufacturing_orders mo ON mop.manufacturing_order_id = mo.id
+     JOIN chair_types ct ON mo.chair_type_id = ct.id
+     WHERE mop.status IN ('pending','in_progress')
+       AND mo.status NOT IN ('completed','cancelled')
+     ORDER BY FIELD(mo.priority,'urgent','high','normal'),
+              ISNULL(mo.due_date), mo.due_date
+     LIMIT 20"
+);
+
+// 自分の職能ランク
+$w_skills = $w_empId ? dbFetchAll(
+    "SELECT p.process_name, esr.rank_level
+     FROM employee_skill_ranks esr
+     JOIN processes p ON esr.process_id = p.id
+     WHERE esr.employee_id = ? AND esr.rank_level > 0
+     ORDER BY esr.rank_level DESC, p.display_order",
+    [$w_empId]
+) : [];
+
+$w_todayTotalMinutes = array_sum(array_column($w_todayLogs, 'actual_minutes'));
+$w_todayPlannedTotal = array_sum(array_column(
+    array_filter($w_todayLogs, fn($r) => (float)$r['planned_total_minutes'] > 0),
+    'planned_total_minutes'
+));
+
 require __DIR__ . '/parts/header.php';
 ?>
 
@@ -248,7 +345,38 @@ require __DIR__ . '/parts/header.php';
         flex-shrink: 0;
     }
 }
+/* ワーカータブ共通 */
+.worker-kpi { border-left:4px solid; border-radius:8px; }
+.diff-over  { color:#dc3545; }
+.diff-under { color:#198754; }
+.queue-row-urgent { border-left:4px solid #dc3545; }
+.queue-row-high   { border-left:4px solid #ffc107; }
 </style>
+
+<!-- ===== タブナビゲーション（管理者のみ） ===== -->
+<ul class="nav nav-tabs nav-fill mb-3" id="dashTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active fw-bold" id="execTab-btn"
+            data-bs-toggle="tab" data-bs-target="#execTabPane"
+            type="button" role="tab">
+      <i class="bi bi-speedometer2"></i>
+      <span class="d-none d-sm-inline"> 経営ダッシュボード</span>
+      <span class="d-sm-none"> 経営</span>
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link fw-bold" id="workerTab-btn"
+            data-bs-toggle="tab" data-bs-target="#workerTabPane"
+            type="button" role="tab">
+      <i class="bi bi-person-workspace"></i>
+      <span class="d-none d-sm-inline"> マイ実績・現場</span>
+      <span class="d-sm-none"> マイ実績</span>
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content" id="dashTabContent">
+<div class="tab-pane fade show active" id="execTabPane" role="tabpanel">
 
 <!-- ヘッダー行 -->
 <div class="d-flex align-items-center mb-3 gap-2">
@@ -649,8 +777,293 @@ require __DIR__ . '/parts/header.php';
 
 </div><!-- /row -->
 
+</div><!-- /execTabPane -->
+
+<!-- ===== ワーカータブ ===== -->
+<div class="tab-pane fade" id="workerTabPane" role="tabpanel">
+
+  <!-- 月間サマリー KPI -->
+  <div class="row g-2 mb-3">
+    <div class="col-4">
+      <div class="card worker-kpi p-2 text-center" style="border-color:#0d6efd">
+        <div class="fw-bold fs-5 text-primary"><?= (int)($w_monthSummary['work_days'] ?? 0) ?></div>
+        <div class="small text-muted">今月稼働日数</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="card worker-kpi p-2 text-center" style="border-color:#198754">
+        <div class="fw-bold fs-5 text-success"><?= $w_monthSummary['total_hours'] ?? 0 ?>h</div>
+        <div class="small text-muted">今月作業時間</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="card worker-kpi p-2 text-center" style="border-color:#6f42c1">
+        <div class="fw-bold fs-5" style="color:#6f42c1"><?= (int)($w_monthSummary['order_count'] ?? 0) ?></div>
+        <div class="small text-muted">今月担当指示数</div>
+      </div>
+    </div>
+  </div>
+
+  <?php if (!empty($w_activeWork)): ?>
+  <!-- 進行中の作業 -->
+  <div class="card mb-3 border-success">
+    <div class="card-header bg-success text-white py-2 fw-bold">
+      <i class="bi bi-play-circle-fill"></i> 現在進行中の作業
+    </div>
+    <div class="card-body p-0">
+    <?php foreach ($w_activeWork as $aw): ?>
+      <?php
+      $elapsed = (int)$aw['elapsed_minutes'];
+      $planned = (int)($aw['planned_total_minutes'] ?? 0);
+      $diffMin = $planned > 0 ? $elapsed - $planned : null;
+      ?>
+      <div class="p-3 border-bottom">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <span class="badge bg-success me-1">稼働中</span>
+            <strong><?= h($aw['process_name']) ?></strong>
+            &mdash;
+            <a href="orders.php?id=<?= $aw['order_id'] ?>" class="text-decoration-none">
+              <?= h($aw['order_no']) ?>
+            </a>
+            <br>
+            <small class="text-muted">
+              <?= h($aw['chair_type_name']) ?> <?= $aw['quantity'] ?>本
+              <?php if ($aw['due_date']): ?>
+                &nbsp;|&nbsp; 納期: <?= formatDate($aw['due_date']) ?>
+              <?php endif; ?>
+            </small>
+          </div>
+          <div class="text-end">
+            <div class="fw-bold fs-5 text-success"><?= formatMinutes($elapsed) ?></div>
+            <?php if ($diffMin !== null): ?>
+            <small class="<?= $diffMin > 0 ? 'diff-over' : 'diff-under' ?>">
+              <?= $diffMin > 0 ? '▲超過 ' . formatMinutes($diffMin) : '▽余裕 ' . formatMinutes(-$diffMin) ?>
+            </small>
+            <?php endif; ?>
+          </div>
+        </div>
+        <?php if ($planned > 0): ?>
+        <div class="progress mt-2" style="height:8px">
+          <?php $pct = min(120, $planned > 0 ? round($elapsed / $planned * 100) : 0); ?>
+          <div class="progress-bar <?= $pct > 100 ? 'bg-danger' : 'bg-success' ?>"
+               style="width:<?= min(100, $pct) ?>%"></div>
+        </div>
+        <div class="d-flex justify-content-between">
+          <small class="text-muted">開始: <?= formatDatetime($aw['started_at']) ?></small>
+          <small class="text-muted"><?= $pct ?>%</small>
+        </div>
+        <?php endif; ?>
+      </div>
+    <?php endforeach; ?>
+    </div>
+  </div>
+  <?php endif; ?>
+
+  <div class="row g-3">
+
+    <!-- 本日の作業実績 -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header py-2 fw-bold d-flex justify-content-between">
+          <span><i class="bi bi-clock-history"></i> 本日の作業実績</span>
+          <span class="text-muted small fw-normal">
+            合計 <strong class="text-dark"><?= formatMinutes($w_todayTotalMinutes) ?></strong>
+            <?php if ($w_todayPlannedTotal > 0): ?>
+              / 計画 <?= formatMinutes($w_todayPlannedTotal) ?>
+            <?php endif; ?>
+          </span>
+        </div>
+        <div class="card-body p-0">
+          <?php if (empty($w_todayLogs)): ?>
+            <div class="p-3 text-center text-muted small">
+              <i class="bi bi-calendar-x"></i> 本日の作業記録なし
+            </div>
+          <?php else: ?>
+            <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>工程</th><th>作業指示</th>
+                  <th class="text-end">実績</th><th class="text-end">計画</th>
+                  <th class="text-end">差</th>
+                </tr>
+              </thead>
+              <tbody>
+              <?php foreach ($w_todayLogs as $tl):
+                  $wActual  = (int)$tl['actual_minutes'];
+                  $wPlanned = (int)($tl['planned_total_minutes'] ?? 0);
+                  $wDiff    = $wPlanned > 0 ? $wActual - $wPlanned : null;
+              ?>
+                <tr>
+                  <td><?= h($tl['process_name']) ?></td>
+                  <td>
+                    <a href="orders.php?id=<?= $tl['manufacturing_order_id'] ?>"
+                       class="text-decoration-none small"><?= h($tl['order_no']) ?></a>
+                  </td>
+                  <td class="text-end fw-bold"><?= formatMinutes($wActual) ?></td>
+                  <td class="text-end text-muted">
+                    <?= $wPlanned > 0 ? formatMinutes($wPlanned) : '―' ?>
+                  </td>
+                  <td class="text-end fw-bold">
+                    <?php if ($wDiff !== null): ?>
+                      <span class="<?= $wDiff > 0 ? 'diff-over' : 'diff-under' ?>">
+                        <?= ($wDiff > 0 ? '+' : '') . formatMinutes($wDiff) ?>
+                      </span>
+                    <?php else: ?>
+                      <span class="text-muted">―</span>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+              </tbody>
+            </table>
+            </div>
+            <?php
+            $wDiffs = array_filter(array_map(
+                fn($r) => (int)$r['planned_total_minutes'] > 0
+                    ? (int)$r['actual_minutes'] - (int)$r['planned_total_minutes'] : null,
+                $w_todayLogs
+            ), fn($v) => $v !== null);
+            if (!empty($wDiffs)):
+                $wTotalDiff = array_sum($wDiffs);
+            ?>
+            <div class="px-3 py-2 border-top text-end small">
+              本日の計画対比:
+              <strong class="<?= $wTotalDiff > 0 ? 'diff-over' : 'diff-under' ?>">
+                <?= $wTotalDiff > 0 ? '▲超過 ' : '▽前倒し ' ?><?= formatMinutes(abs($wTotalDiff)) ?>
+              </strong>
+            </div>
+            <?php endif; ?>
+          <?php endif; ?>
+        </div>
+      </div>
+    </div>
+
+    <!-- 作業キュー（仕掛中・未着手） -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header py-2 fw-bold">
+          <i class="bi bi-list-task"></i> 全体の作業キュー
+          <span class="badge bg-secondary ms-1"><?= count($w_deptQueue) ?></span>
+        </div>
+        <div class="card-body p-0">
+          <?php if (empty($w_deptQueue)): ?>
+            <div class="p-3 text-center text-success small">
+              <i class="bi bi-check-circle-fill"></i> 作業キューは空です
+            </div>
+          <?php else: ?>
+            <div class="list-group list-group-flush small">
+            <?php foreach ($w_deptQueue as $q):
+              $qRowClass = match($q['priority'] ?? 'normal') {
+                  'urgent' => 'queue-row-urgent',
+                  'high'   => 'queue-row-high',
+                  default  => '',
+              };
+              $daysLeft = $q['days_left'];
+            ?>
+              <a href="orders.php?id=<?= $q['order_id'] ?>"
+                 class="list-group-item list-group-item-action <?= $qRowClass ?> py-2">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <?= processStatusBadge($q['status']) ?>
+                    <?php if (($q['priority'] ?? 'normal') !== 'normal'): ?>
+                      <?= priorityBadge($q['priority']) ?>
+                    <?php endif; ?>
+                    <strong class="ms-1"><?= h($q['process_name']) ?></strong>
+                    <span class="text-muted"> — <?= h($q['order_no']) ?></span>
+                    <br>
+                    <span class="text-muted">
+                      <?= h($q['customer_name'] ?: $q['chair_type_name']) ?>
+                      <?= $q['quantity'] ?>本
+                    </span>
+                  </div>
+                  <div class="text-end text-nowrap">
+                    <?php if ($q['planned_total_minutes'] > 0): ?>
+                      <span class="badge bg-light text-dark border">
+                        <?= formatMinutes((int)$q['planned_total_minutes']) ?>
+                      </span><br>
+                    <?php endif; ?>
+                    <?php if ($daysLeft !== null): ?>
+                      <small class="<?= $daysLeft <= 0 ? 'text-danger fw-bold' : ($daysLeft <= 2 ? 'text-warning' : 'text-muted') ?>">
+                        <?= $daysLeft <= 0 ? '納期超過' : $daysLeft.'日後' ?>
+                      </small>
+                    <?php endif; ?>
+                  </div>
+                </div>
+              </a>
+            <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
+        </div>
+      </div>
+    </div>
+
+    <!-- 職能ランク -->
+    <?php if (!empty($w_skills)): ?>
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header py-2 fw-bold">
+          <i class="bi bi-award-fill text-warning"></i> 私の職能ランク
+        </div>
+        <div class="card-body py-2">
+          <div class="d-flex flex-wrap gap-2">
+            <?php
+            $rankLabels = [1=>'見習',2=>'補助',3=>'一般',4=>'熟練',5=>'マスター'];
+            $rankColors = [1=>'secondary',2=>'info',3=>'primary',4=>'warning',5=>'danger'];
+            foreach ($w_skills as $sk):
+            ?>
+              <span class="badge bg-<?= $rankColors[$sk['rank_level']] ?> fs-6 px-3 py-2">
+                <i class="bi bi-star-fill me-1"></i>
+                <?= h($sk['process_name']) ?>
+                <span class="ms-1 opacity-75"><?= $rankLabels[$sk['rank_level']] ?></span>
+              </span>
+            <?php endforeach; ?>
+          </div>
+        </div>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- クイックリンク -->
+    <div class="col-12">
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="work_start.php" class="btn btn-success">
+          <i class="bi bi-play-fill"></i> 作業開始
+        </a>
+        <a href="barcode_scan.php" class="btn btn-outline-primary">
+          <i class="bi bi-upc-scan"></i> バーコードスキャン
+        </a>
+        <a href="orders.php" class="btn btn-outline-secondary">
+          <i class="bi bi-clipboard-check"></i> 作業指示一覧
+        </a>
+        <a href="progress_board.php" class="btn btn-outline-secondary">
+          <i class="bi bi-kanban"></i> 進捗ボード
+        </a>
+      </div>
+    </div>
+
+  </div><!-- /row -->
+</div><!-- /workerTabPane -->
+</div><!-- /tab-content -->
+
 <?php
 $extraJs = <<<JSCODE
+// タブ状態をlocalStorageで記憶
+(function(){
+    const key = 'dashActiveTab';
+    const saved = localStorage.getItem(key);
+    if (saved) {
+        const btn = document.getElementById(saved);
+        if (btn) { bootstrap.Tab.getOrCreateInstance(btn).show(); }
+    }
+    document.querySelectorAll('#dashTabs .nav-link').forEach(function(btn){
+        btn.addEventListener('shown.bs.tab', function(e){
+            localStorage.setItem(key, e.target.id);
+        });
+    });
+})();
+
 // ライブクロック
 (function tick(){
     const el = document.getElementById('liveClock');
