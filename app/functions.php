@@ -69,7 +69,7 @@ function processStatusLabel(string $status): array {
         'delayed'     => ['label' => '遅れ',   'class' => 'danger'],
         'on_hold'     => ['label' => '保留',   'class' => 'warning'],
         default       => ['label' => '未着手', 'class' => 'secondary'],
-    ];
+    };
 }
 
 /**
@@ -82,7 +82,7 @@ function orderStatusLabel(string $status): array {
         'on_hold'     => ['label' => '保留',     'class' => 'warning'],
         'cancelled'   => ['label' => 'キャンセル', 'class' => 'secondary'],
         default       => ['label' => '計画中',   'class' => 'info'],
-    ];
+    };
 }
 
 /**
