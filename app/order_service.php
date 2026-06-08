@@ -5,6 +5,8 @@
 // 接続テーブル: manufacturing_orders, manufacturing_order_processes
 // 呼び出し元: orders.php, order_form.php
 // =====================================================
+require_once __DIR__ . '/chair_type_service.php';
+require_once __DIR__ . '/standard_time_service.php';
 
 /**
  * 作業指示を新規作成する
