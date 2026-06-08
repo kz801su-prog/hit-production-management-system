@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($userId) {
             $user = dbFetchOne("SELECT employee_id FROM users WHERE id = ? AND is_active = 0", [$userId]);
             if ($user) {
-                $pdo = dbConnection();
+                $pdo = getDB();
                 $pdo->beginTransaction();
                 try {
                     $pdo->prepare("DELETE FROM users     WHERE id = ?")->execute([$userId]);

@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$errors) {
         // トランザクションで employee + user を一括作成
-        $pdo = dbConnection();
+        $pdo = getDB();
         try {
             $pdo->beginTransaction();
 

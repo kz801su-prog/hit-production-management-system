@@ -75,12 +75,17 @@ function totpDecrypt(string $ciphertext): string {
 
 /**
  * システム設定で「Authenticator必須」になっているか確認
+ * system_settings テーブルが未作成でも false を返して安全に動作する
  */
 function isTotpRequired(): bool {
     static $cache = null;
     if ($cache === null) {
-        $row   = dbFetchOne("SELECT setting_value FROM system_settings WHERE setting_key = 'totp_required'");
-        $cache = ($row['setting_value'] ?? '0') === '1';
+        try {
+            $row   = dbFetchOne("SELECT setting_value FROM system_settings WHERE setting_key = 'totp_required'");
+            $cache = ($row['setting_value'] ?? '0') === '1';
+        } catch (PDOException $e) {
+            $cache = false;
+        }
     }
     return $cache;
 }
