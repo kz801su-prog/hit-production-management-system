@@ -121,6 +121,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: ' . APP_URL . '/admin_settings.php#cost');
         exit;
     }
+
+    // 月次予算インポート（Excel → JSON）
+    if ($postAction === 'import_budget' && isPresidentOrAdmin()) {
+        $rows = json_decode(postStr('budget_json') ?: '[]', true);
+        $uid  = getCurrentUser()['id'];
+        $saved = 0;
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $ym = trim($row['year_month'] ?? '');
+                // YYYY/MM → YYYY-MM、YYYY年M月 → YYYY-MM
+                $ym = preg_replace('/[\/年]/', '-', $ym);
+                $ym = preg_replace('/月$/', '', $ym);
+                // ゼロ埋め: 2024-1 → 2024-01
+                if (preg_match('/^(\d{4})-(\d{1,2})$/', $ym, $m)) {
+                    $ym = $m[1] . '-' . str_pad($m[2], 2, '0', STR_PAD_LEFT);
+                }
+                if (!preg_match('/^\d{4}-\d{2}$/', $ym)) continue;
+                $tq  = max(0, (int)preg_replace('/[^\d]/', '', $row['target_qty']       ?? '0'));
+                $sal = max(0, (int)preg_replace('/[^\d]/', '', $row['salary_forecast']   ?? '0'));
+                $ovh = max(0, (int)preg_replace('/[^\d]/', '', $row['overhead_forecast'] ?? '0'));
+                try {
+                    dbExecute(
+                        "INSERT INTO monthly_budget
+                             (`year_month`, target_qty, salary_forecast, overhead_forecast, updated_by_user_id)
+                         VALUES (?,?,?,?,?)
+                         ON DUPLICATE KEY UPDATE
+                             target_qty=VALUES(target_qty),
+                             salary_forecast=VALUES(salary_forecast),
+                             overhead_forecast=VALUES(overhead_forecast),
+                             updated_by_user_id=VALUES(updated_by_user_id),
+                             updated_at=NOW()",
+                        [$ym, $tq, $sal, $ovh, $uid]
+                    );
+                    $saved++;
+                } catch (Exception $e) {}
+            }
+        }
+        setFlash("{$saved}件の予算データを保存しました。");
+        header('Location: ' . APP_URL . '/admin_settings.php#budget');
+        exit;
+    }
+
+    // ダッシュボード表示設定
+    if ($postAction === 'save_display' && isPresidentOrAdmin()) {
+        $allWidgets = ['daily_chart','monthly_chart','budget_chart','delay_alerts','upcoming_due','dept_status','cost_card','gantt'];
+        $on = [];
+        foreach ($allWidgets as $w) {
+            $on[$w] = isset($_POST['w_' . $w]) ? 1 : 0;
+        }
+        dbExecute(
+            "INSERT INTO system_settings (setting_key, setting_value, updated_by_user_id)
+             VALUES ('dashboard_widgets', ?, ?)
+             ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value),
+                 updated_by_user_id=VALUES(updated_by_user_id), updated_at=NOW()",
+            [json_encode($on), getCurrentUser()['id']]
+        );
+        setFlash('表示設定を保存しました。');
+        header('Location: ' . APP_URL . '/admin_settings.php#display');
+        exit;
+    }
 }
 
 // 現在の設定値
@@ -142,6 +202,29 @@ if (isPresidentOrAdmin()) {
         }
     } catch (Exception $e) {}
 }
+
+// 月次予算データ（過去2年）
+$monthlyBudgets = [];
+if (isPresidentOrAdmin()) {
+    try {
+        $monthlyBudgets = dbFetchAll(
+            "SELECT mb.year_month, mb.target_qty, mb.salary_forecast, mb.overhead_forecast,
+                    (mb.salary_forecast + mb.overhead_forecast) AS total_budget,
+                    COALESCE((SELECT SUM(quantity) FROM manufacturing_orders mo
+                               WHERE mo.status='completed'
+                                 AND DATE_FORMAT(mo.updated_at,'%Y-%m')=mb.year_month), 0) AS actual_qty
+             FROM monthly_budget mb
+             ORDER BY mb.year_month DESC LIMIT 24"
+        );
+    } catch (Exception $e) {}
+}
+
+// ダッシュボード表示設定
+$displayWidgets = [];
+try {
+    $dw = dbFetchOne("SELECT setting_value FROM system_settings WHERE setting_key='dashboard_widgets'")['setting_value'] ?? '';
+    $displayWidgets = $dw ? (json_decode($dw, true) ?? []) : [];
+} catch (Exception $e) {}
 
 // 承認待ちユーザー一覧（is_active=0）
 $pendingUsers = dbFetchAll(
@@ -377,5 +460,226 @@ try {
   </div>
 </div>
 <?php endif; ?>
+
+<?php if (isPresidentOrAdmin()): ?>
+<!-- ===== 月次予算設定 ===== -->
+<div class="card mt-4" id="budget">
+  <div class="card-header fw-bold">
+    <i class="bi bi-table"></i> 月次予算設定
+    <span class="badge bg-danger ms-2">社長・Admin 限定</span>
+  </div>
+  <div class="card-body">
+
+    <!-- Excel インポート -->
+    <h6 class="fw-bold mb-2"><i class="bi bi-file-earmark-excel text-success"></i> Excelファイルから取り込み</h6>
+    <p class="text-muted small mb-2">
+      Excel ファイルを選択してください。<br>
+      <strong>A列=年月（YYYY-MM / YYYY/MM / YYYY年M月）, B列=目標本数, C列=給与予測（円）, D列=管理費予測（円）</strong><br>
+      1行目がヘッダーの場合は自動的にスキップされます。
+    </p>
+
+    <div class="mb-3">
+      <input type="file" id="budgetFileInput" accept=".xlsx,.xls,.csv" class="form-control" style="max-width:400px">
+    </div>
+
+    <!-- プレビューテーブル -->
+    <div id="budgetPreview" class="d-none mb-3">
+      <p class="fw-bold small mb-1">プレビュー（<span id="budgetRowCount">0</span>件）</p>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered mb-0" style="font-size:.85rem">
+          <thead class="table-light">
+            <tr><th>年月</th><th>目標本数</th><th>給与予測</th><th>管理費予測</th><th>合計予算</th></tr>
+          </thead>
+          <tbody id="budgetPreviewBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 取り込みフォーム -->
+    <form method="post" id="budgetImportForm">
+      <?= csrfField() ?>
+      <input type="hidden" name="action" value="import_budget">
+      <input type="hidden" name="budget_json" id="budgetJsonInput" value="[]">
+      <button type="submit" id="budgetImportBtn" class="btn btn-success d-none">
+        <i class="bi bi-cloud-upload"></i> データを取り込む
+      </button>
+    </form>
+
+    <!-- 既存データ表示 -->
+    <?php if (!empty($monthlyBudgets)): ?>
+    <hr>
+    <h6 class="fw-bold mb-2"><i class="bi bi-list-ul"></i> 登録済み予算データ</h6>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover" style="font-size:.85rem">
+        <thead class="table-light">
+          <tr>
+            <th>年月</th>
+            <th class="text-end">目標本数</th>
+            <th class="text-end">実績本数</th>
+            <th class="text-end">達成率</th>
+            <th class="text-end">給与予測</th>
+            <th class="text-end">管理費予測</th>
+            <th class="text-end">合計予算</th>
+            <th class="text-end">予算単価/本</th>
+          </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($monthlyBudgets as $mb):
+          $ach = $mb['target_qty'] > 0 ? round($mb['actual_qty'] / $mb['target_qty'] * 100) : null;
+          $unitBudget = $mb['target_qty'] > 0 ? (int)($mb['total_budget'] / $mb['target_qty']) : null;
+        ?>
+          <tr>
+            <td class="fw-bold"><?= h($mb['year_month']) ?></td>
+            <td class="text-end"><?= number_format($mb['target_qty']) ?>本</td>
+            <td class="text-end <?= $mb['actual_qty'] >= $mb['target_qty'] ? 'text-success fw-bold' : '' ?>">
+              <?= number_format($mb['actual_qty']) ?>本
+            </td>
+            <td class="text-end">
+              <?php if ($ach !== null): ?>
+                <span class="badge bg-<?= $ach >= 100 ? 'success' : ($ach >= 80 ? 'warning text-dark' : 'danger') ?>">
+                  <?= $ach ?>%
+                </span>
+              <?php else: ?><span class="text-muted">―</span><?php endif; ?>
+            </td>
+            <td class="text-end text-muted">¥<?= number_format($mb['salary_forecast']) ?></td>
+            <td class="text-end text-muted">¥<?= number_format($mb['overhead_forecast']) ?></td>
+            <td class="text-end fw-bold">¥<?= number_format($mb['total_budget']) ?></td>
+            <td class="text-end"><?= $unitBudget ? '¥'.number_format($unitBudget) : '―' ?></td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+    <?php else: ?>
+      <p class="text-muted small mb-0 mt-3"><i class="bi bi-info-circle"></i> 予算データが登録されていません。Excelファイルから取り込んでください。</p>
+    <?php endif; ?>
+  </div>
+</div>
+
+<!-- ===== ダッシュボード表示設定 ===== -->
+<div class="card mt-4" id="display">
+  <div class="card-header fw-bold">
+    <i class="bi bi-layout-three-columns"></i> ダッシュボード表示設定
+    <span class="badge bg-danger ms-2">社長・Admin 限定</span>
+  </div>
+  <div class="card-body">
+    <p class="text-muted small mb-3">経営ダッシュボードに表示するウィジェットを選択してください。</p>
+    <form method="post">
+      <?= csrfField() ?>
+      <input type="hidden" name="action" value="save_display">
+      <?php
+      $widgetLabels = [
+          'daily_chart'  => ['日別生産グラフ',         'bi-bar-chart'],
+          'monthly_chart'=> ['月別推移グラフ',          'bi-graph-up'],
+          'budget_chart' => ['予算対比グラフ',          'bi-bar-chart-line'],
+          'delay_alerts' => ['遅延アラート',            'bi-exclamation-triangle'],
+          'upcoming_due' => ['納期迫る案件',            'bi-calendar-event'],
+          'dept_status'  => ['部門別稼働状況',          'bi-people-fill'],
+          'cost_card'    => ['コスト管理カード',        'bi-currency-yen'],
+          'gantt'        => ['製造スケジュール（ガント）','bi-bar-chart-steps'],
+      ];
+      ?>
+      <div class="row g-2">
+      <?php foreach ($widgetLabels as $key => [$label, $icon]): ?>
+        <div class="col-md-3 col-sm-4 col-6">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch"
+                   id="w_<?= $key ?>" name="w_<?= $key ?>"
+                   <?= (!isset($displayWidgets[$key]) || $displayWidgets[$key]) ? 'checked' : '' ?>>
+            <label class="form-check-label small" for="w_<?= $key ?>">
+              <i class="bi <?= $icon ?>"></i> <?= $label ?>
+            </label>
+          </div>
+        </div>
+      <?php endforeach; ?>
+      </div>
+      <div class="mt-3">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="bi bi-save"></i> 表示設定を保存
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+<?php endif; ?>
+
+<!-- SheetJS CDN (Excel読み込み) -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>
+(function(){
+    const fileInput = document.getElementById('budgetFileInput');
+    if (!fileInput) return;
+
+    fileInput.addEventListener('change', function(e){
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(ev){
+            let rows = [];
+            const ext = file.name.split('.').pop().toLowerCase();
+
+            if (ext === 'csv') {
+                // CSV パース
+                const text = new TextDecoder('utf-8').decode(new Uint8Array(ev.target.result));
+                rows = text.trim().split(/\r?\n/).map(line => line.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
+            } else {
+                // Excel パース (SheetJS)
+                const wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array'});
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+            }
+
+            // ヘッダー行スキップ判定
+            const data = [];
+            for (const row of rows) {
+                if (!row[0]) continue;
+                const ym = String(row[0]).trim();
+                // 年月っぽくない（数字で始まらない）行はスキップ
+                if (!/^\d/.test(ym)) continue;
+                data.push({
+                    year_month:        ym,
+                    target_qty:        String(row[1] ?? '0'),
+                    salary_forecast:   String(row[2] ?? '0'),
+                    overhead_forecast: String(row[3] ?? '0'),
+                });
+            }
+
+            // プレビュー表示
+            const tbody = document.getElementById('budgetPreviewBody');
+            const preview = document.getElementById('budgetPreview');
+            const countEl = document.getElementById('budgetRowCount');
+            const importBtn = document.getElementById('budgetImportBtn');
+            const jsonInput = document.getElementById('budgetJsonInput');
+
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+                preview.classList.add('d-none');
+                importBtn.classList.add('d-none');
+                alert('データが見つかりませんでした。列の順序を確認してください。');
+                return;
+            }
+
+            data.forEach(function(r){
+                const sal = parseInt(r.salary_forecast.replace(/[^\d]/g,'')) || 0;
+                const ovh = parseInt(r.overhead_forecast.replace(/[^\d]/g,'')) || 0;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${r.year_month}</td>`
+                    + `<td class="text-end">${parseInt(r.target_qty)||0}本</td>`
+                    + `<td class="text-end">¥${sal.toLocaleString()}</td>`
+                    + `<td class="text-end">¥${ovh.toLocaleString()}</td>`
+                    + `<td class="text-end fw-bold">¥${(sal+ovh).toLocaleString()}</td>`;
+                tbody.appendChild(tr);
+            });
+
+            countEl.textContent = data.length;
+            preview.classList.remove('d-none');
+            importBtn.classList.remove('d-none');
+            jsonInput.value = JSON.stringify(data);
+        };
+        reader.readAsArrayBuffer(file);
+    });
+})();
+</script>
 
 <?php require __DIR__ . '/parts/footer.php'; ?>
