@@ -33,12 +33,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'start_process' && $mopId) {
         dbExecute(
             "UPDATE manufacturing_order_processes
-             SET status='in_progress', actual_start_time=NOW()
-             WHERE id=? AND status='pending'",
+             SET status='in_progress', actual_start=NOW()
+             WHERE id=? AND status='not_started'",
             [$mopId]
         );
         dbExecute(
-            "UPDATE manufacturing_orders SET status='in_progress' WHERE id=? AND status='pending'",
+            "UPDATE manufacturing_orders SET status='in_progress' WHERE id=? AND status='not_started'",
             [$orderId]
         );
         setFlash('工程を開始しました。', 'success');
@@ -48,8 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $endTime   = postStr('end_datetime') ?: date('Y-m-d H:i:s');
         dbExecute(
             "UPDATE manufacturing_order_processes
-             SET status='completed', actual_end_time=?
-             WHERE id=? AND status IN ('pending','in_progress')",
+             SET status='completed', actual_end=?
+             WHERE id=? AND status IN ('not_started','in_progress')",
             [$endTime, $mopId]
         );
         // 全工程完了チェック
@@ -116,10 +116,15 @@ require __DIR__ . '/parts/header.php';
 <div class="row mb-3 align-items-center">
   <div class="col"><h2><i class="bi bi-upc-scan"></i> バーコードスキャン</h2></div>
   <?php if ($order): ?>
-  <div class="col-auto">
+  <div class="col-auto d-flex gap-2">
     <a href="barcode_print.php?order_id=<?= $order['id'] ?>" class="btn btn-outline-secondary btn-sm" target="_blank">
-      <i class="bi bi-printer"></i> 再印刷
+      <i class="bi bi-printer"></i> 印刷
     </a>
+    <?php if (!in_array($order['status'], ['completed','cancelled'])): ?>
+    <a href="barcode_print.php?order_id=<?= $order['id'] ?>" class="btn btn-warning btn-sm" target="_blank">
+      <i class="bi bi-arrow-repeat"></i> バーコード再発行
+    </a>
+    <?php endif; ?>
   </div>
   <?php endif; ?>
 </div>
@@ -163,7 +168,7 @@ require __DIR__ . '/parts/header.php';
   <div class="card-body py-2">
     <div class="row g-2 small">
       <div class="col-6 col-md-3">
-        <span class="text-muted">椅子タイプ:</span><br>
+        <span class="text-muted">製品タイプ:</span><br>
         <strong><?= h($order['chair_type_code']) ?></strong><br>
         <span class="text-muted"><?= h($order['chair_type_name']) ?></span>
       </div>
@@ -210,10 +215,10 @@ require __DIR__ . '/parts/header.php';
             <small class="text-muted">(<?= h($mop['process_code']) ?>)</small>
           </td>
           <td><?= processStatusBadge($mop['status']) ?></td>
-          <td class="small"><?= $mop['actual_start_time'] ? formatDatetime($mop['actual_start_time']) : '―' ?></td>
-          <td class="small"><?= $mop['actual_end_time'] ? formatDatetime($mop['actual_end_time']) : '―' ?></td>
+          <td class="small"><?= $mop['actual_start'] ? formatDatetime($mop['actual_start']) : '―' ?></td>
+          <td class="small"><?= $mop['actual_end'] ? formatDatetime($mop['actual_end']) : '―' ?></td>
           <td>
-            <?php if ($mop['status'] === 'pending'): ?>
+            <?php if ($mop['status'] === 'not_started'): ?>
               <form method="post" class="d-inline">
                 <?= csrfField() ?>
                 <input type="hidden" name="action"   value="start_process">

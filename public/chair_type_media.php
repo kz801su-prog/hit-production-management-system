@@ -1,7 +1,7 @@
 <?php
 // =====================================================
-// 椅子タイプ画像・図面管理
-// 目的: 椅子タイプに写真・図面・作業指示図をアップロード・管理
+// 製品タイプ画像・図面管理
+// 目的: 製品タイプに写真・図面・作業指示図をアップロード・管理
 // 接続テーブル: chair_type_media
 // 権限: process_leader以上
 // =====================================================
@@ -23,17 +23,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postAction = postStr('action');
 
     if ($postAction === 'upload' && isset($_FILES['media_file'])) {
-        $file     = $_FILES['media_file'];
-        $maxBytes = MAX_UPLOAD_MB * 1024 * 1024;
+        $file          = $_FILES['media_file'];
+        $maxBytes      = MAX_UPLOAD_MB * 1024 * 1024;
+        $allowedTypes  = array_merge(ALLOWED_IMG_TYPES, ['application/pdf']);
 
         if ($file['error'] !== UPLOAD_ERR_OK) {
             setFlash('アップロードエラーが発生しました。', 'danger');
         } elseif ($file['size'] > $maxBytes) {
             setFlash('ファイルサイズが上限（' . MAX_UPLOAD_MB . 'MB）を超えています。', 'danger');
-        } elseif (!in_array($file['type'], ALLOWED_IMG_TYPES)) {
-            setFlash('JPEG・PNG・GIF・WebP形式のみアップロード可能です。', 'danger');
+        } elseif (!in_array($file['type'], $allowedTypes)) {
+            setFlash('JPEG・PNG・GIF・WebP・PDF形式のみアップロード可能です。', 'danger');
         } else {
-            $ext      = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $ext      = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
             $saveName = 'ct_' . $chairTypeId . '_' . uniqid() . '.' . $ext;
             $savePath = UPLOAD_MEDIA_DIR . $saveName;
 
@@ -56,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ]
                 );
                 auditLog('upload', 'chair_type_media', null, null, ['file' => $saveName]);
-                setFlash('画像をアップロードしました。');
+                setFlash('ファイルをアップロードしました。');
             } else {
                 setFlash('ファイル保存に失敗しました。', 'danger');
             }
@@ -80,13 +81,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // データ取得
-$chairType = $chairTypeId
-    ? dbFetchOne("SELECT * FROM chair_types WHERE id = ?", [$chairTypeId])
-    : null;
+$searchMode    = $_GET['search'] ?? '';   // 'drawing' で図面専用検索
+$searchKeyword = trim($_GET['kw'] ?? '');
 
-$mediaList = $chairTypeId
-    ? dbFetchAll("SELECT * FROM chair_type_media WHERE chair_type_id = ? ORDER BY display_order, id", [$chairTypeId])
-    : [];
+// 図面専用検索: 全製品タイプの図面を横断検索
+if ($searchMode === 'drawing') {
+    $chairType = null;
+    $sql  = "SELECT m.*, ct.chair_type_code, ct.chair_type_name
+             FROM chair_type_media m
+             JOIN chair_types ct ON ct.id = m.chair_type_id
+             WHERE m.media_type = 'drawing'";
+    $params = [];
+    if ($searchKeyword !== '') {
+        $sql .= " AND (ct.chair_type_code LIKE ? OR ct.chair_type_name LIKE ? OR m.caption LIKE ? OR m.original_file_name LIKE ?)";
+        $like = "%{$searchKeyword}%";
+        $params = [$like, $like, $like, $like];
+    }
+    $sql .= " ORDER BY ct.chair_type_code, m.display_order, m.id";
+    $mediaList = dbFetchAll($sql, $params);
+} else {
+    $chairType = $chairTypeId
+        ? dbFetchOne("SELECT * FROM chair_types WHERE id = ?", [$chairTypeId])
+        : null;
+
+    $mediaList = $chairTypeId
+        ? dbFetchAll("SELECT * FROM chair_type_media WHERE chair_type_id = ? ORDER BY display_order, id", [$chairTypeId])
+        : [];
+}
 
 $mediaTypeLabels = [
     'photo'            => '完成写真',
@@ -101,22 +122,38 @@ $mediaTypeLabels = [
 require __DIR__ . '/parts/header.php';
 ?>
 
-<div class="row mb-3">
+<div class="row mb-3 align-items-center">
   <div class="col">
-    <h2><i class="bi bi-images"></i> 画像・図面管理</h2>
-    <?php if ($chairType): ?>
-      <p class="text-muted"><?= h($chairType['chair_type_code']) ?> - <?= h($chairType['chair_type_name']) ?></p>
+    <?php if ($searchMode === 'drawing'): ?>
+      <h2><i class="bi bi-search"></i> 図面専用検索</h2>
+    <?php else: ?>
+      <h2><i class="bi bi-images"></i> 画像・図面管理</h2>
+      <?php if ($chairType): ?>
+        <p class="text-muted mb-0"><?= h($chairType['chair_type_code']) ?> - <?= h($chairType['chair_type_name']) ?></p>
+      <?php endif; ?>
     <?php endif; ?>
   </div>
-  <div class="col-auto">
-    <a href="chair_type_form.php?id=<?= $chairTypeId ?>" class="btn btn-outline-secondary">タイプ詳細へ戻る</a>
+  <div class="col-auto d-flex gap-2">
+    <?php if ($searchMode === 'drawing'): ?>
+      <form class="d-flex gap-2" method="get">
+        <input type="hidden" name="search" value="drawing">
+        <input type="search" name="kw" class="form-control form-control-sm" placeholder="品番・品名・キャプション" value="<?= h($searchKeyword) ?>" style="width:200px">
+        <button class="btn btn-sm btn-primary"><i class="bi bi-search"></i></button>
+      </form>
+      <a href="chair_type_media.php<?= $chairTypeId ? "?chair_type_id={$chairTypeId}" : '' ?>" class="btn btn-outline-secondary btn-sm">図面検索を閉じる</a>
+    <?php else: ?>
+      <a href="chair_type_media.php?search=drawing" class="btn btn-outline-info btn-sm"><i class="bi bi-file-earmark-pdf"></i> 図面専用検索</a>
+      <?php if ($chairTypeId): ?>
+        <a href="chair_type_form.php?id=<?= $chairTypeId ?>" class="btn btn-outline-secondary btn-sm">タイプ詳細へ戻る</a>
+      <?php endif; ?>
+    <?php endif; ?>
   </div>
 </div>
 
-<?php if ($chairType): ?>
+<?php if ($searchMode !== 'drawing' && $chairType): ?>
 <!-- アップロードフォーム -->
 <div class="card mb-3">
-  <div class="card-header bg-primary text-white">画像をアップロード</div>
+  <div class="card-header bg-primary text-white">ファイルをアップロード</div>
   <div class="card-body">
     <form method="post" enctype="multipart/form-data" class="row g-2">
       <?= csrfField() ?>
@@ -130,7 +167,8 @@ require __DIR__ . '/parts/header.php';
         </select>
       </div>
       <div class="col-md-4">
-        <input type="file" name="media_file" class="form-control" accept="image/*" required>
+        <input type="file" name="media_file" class="form-control" accept="image/*,application/pdf" required>
+        <small class="text-muted">JPEG / PNG / GIF / WebP / PDF</small>
       </div>
       <div class="col-md-3">
         <input type="text" name="caption" class="form-control" placeholder="説明文（任意）">
@@ -144,22 +182,45 @@ require __DIR__ . '/parts/header.php';
     </form>
   </div>
 </div>
+<?php endif; ?>
 
-<!-- 画像一覧 -->
+<!-- メディア一覧 -->
+<?php if ($searchMode === 'drawing' && !empty($mediaList)): ?>
+  <p class="text-muted mb-2"><?= count($mediaList) ?>件の図面が見つかりました。</p>
+<?php endif; ?>
 <div class="row row-cols-2 row-cols-md-4 g-3">
-<?php foreach ($mediaList as $m): ?>
+<?php foreach ($mediaList as $m):
+    $isPdf   = strtolower(pathinfo($m['file_path'], PATHINFO_EXTENSION)) === 'pdf';
+    $fileUrl = APP_URL . '/uploads/chair_type_media/' . h($m['file_path']);
+?>
   <div class="col">
     <div class="card h-100">
-      <img src="<?= APP_URL ?>/uploads/chair_type_media/<?= h($m['file_path']) ?>"
-           class="card-img-top" style="height:180px;object-fit:contain;background:#f5f5f5"
-           alt="<?= h($m['caption'] ?? '') ?>">
+      <?php if ($isPdf): ?>
+        <a href="<?= $fileUrl ?>" target="_blank" class="d-flex align-items-center justify-content-center text-decoration-none"
+           style="height:180px;background:#f8f9fa;border-bottom:1px solid #dee2e6">
+          <div class="text-center text-danger">
+            <i class="bi bi-file-earmark-pdf" style="font-size:3.5rem"></i>
+            <div class="small mt-1 text-muted">PDFを開く</div>
+          </div>
+        </a>
+      <?php else: ?>
+        <a href="<?= $fileUrl ?>" target="_blank">
+          <img src="<?= $fileUrl ?>" class="card-img-top"
+               style="height:180px;object-fit:contain;background:#f5f5f5"
+               alt="<?= h($m['caption'] ?? '') ?>">
+        </a>
+      <?php endif; ?>
       <div class="card-body p-2">
+        <?php if ($searchMode === 'drawing' && isset($m['chair_type_code'])): ?>
+          <div class="fw-bold small mb-1"><?= h($m['chair_type_code']) ?> <?= h($m['chair_type_name']) ?></div>
+        <?php endif; ?>
         <div class="badge bg-info mb-1"><?= $mediaTypeLabels[$m['media_type']] ?? $m['media_type'] ?></div>
         <?php if ($m['caption']): ?>
           <p class="card-text small"><?= h($m['caption']) ?></p>
         <?php endif; ?>
         <small class="text-muted"><?= h($m['original_file_name']) ?></small>
       </div>
+      <?php if ($searchMode !== 'drawing'): ?>
       <div class="card-footer p-1">
         <form method="post" onsubmit="return confirm('削除しますか？')">
           <?= csrfField() ?>
@@ -169,15 +230,19 @@ require __DIR__ . '/parts/header.php';
           <button type="submit" class="btn btn-sm btn-outline-danger w-100">削除</button>
         </form>
       </div>
+      <?php endif; ?>
     </div>
   </div>
 <?php endforeach; ?>
 <?php if (empty($mediaList)): ?>
-  <div class="col-12 text-center text-muted py-4"><i class="bi bi-image fs-1"></i><br>画像未登録</div>
+  <div class="col-12 text-center text-muted py-4">
+    <i class="bi bi-image fs-1"></i><br>
+    <?= $searchMode === 'drawing' ? '該当する図面が見つかりません' : 'ファイル未登録' ?>
+  </div>
 <?php endif; ?>
 </div>
-<?php else: ?>
-  <div class="alert alert-warning">椅子タイプを選択してください。</div>
+<?php if ($searchMode !== 'drawing' && !$chairType): ?>
+  <div class="alert alert-warning">製品タイプを選択してください。</div>
 <?php endif; ?>
 
 <?php require __DIR__ . '/parts/footer.php'; ?>

@@ -89,6 +89,7 @@ function calcStandardTimes(int $chairTypeId, int $quantity): array {
             'process_id'          => $pid,
             'process_code'        => $std['process_code'],
             'process_name'        => $std['process_name'],
+            'dept_id'             => $std['dept_id'] ?? null,
             'setup_minutes'       => $setup,
             'net_work_minutes'    => round($netWork, 2),
             'adjustment_minutes'  => round($adjTotal, 2),
@@ -137,19 +138,21 @@ function saveOrderProcessStandards(int $orderId, int $chairTypeId, int $quantity
 
         dbExecute(
             "INSERT INTO manufacturing_order_processes
-                (manufacturing_order_id, process_id, process_sequence,
+                (manufacturing_order_id, process_id, dept_id, process_sequence,
                  can_start_parallel,
                  planned_setup_minutes, planned_work_minutes,
                  planned_adjustment_minutes, planned_allowance_minutes, planned_total_minutes,
                  standard_snapshot, assigned_worker_count,
                  planned_start, planned_end)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
+                dept_id               = VALUES(dept_id),
                 planned_total_minutes = VALUES(planned_total_minutes),
                 standard_snapshot     = VALUES(standard_snapshot)",
             [
                 $orderId,
                 $pid,
+                $calc['dept_id'],
                 $calc['display_order'],
                 $calc['can_start_parallel'] ? 1 : 0,
                 $calc['setup_minutes'],

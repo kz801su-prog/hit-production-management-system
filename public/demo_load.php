@@ -95,7 +95,7 @@ function loadDemoData(int $userId): void {
     $procRows = dbFetchAll("SELECT id, process_code FROM processes");
     $procMap  = array_column($procRows, 'id', 'process_code');
 
-    // 椅子タイプIDマップ取得
+    // 製品タイプIDマップ取得
     $ctRows = dbFetchAll("SELECT id, chair_type_code FROM chair_types");
     $ct     = array_column($ctRows, 'id', 'chair_type_code');
 
@@ -443,7 +443,7 @@ require __DIR__ . '/parts/header.php';
   <div class="card-body">
     <ul class="mb-0">
       <li>「デモデータ読み込み」を実行すると、<strong>既存の製造指示・作業実績データはすべて削除</strong>されます。</li>
-      <li>椅子タイプ・社員・ユーザーなどのマスターデータは変更されません。</li>
+      <li>製品タイプ・社員・ユーザーなどのマスターデータは変更されません。</li>
       <li>コスト設定にサンプル値（給与¥2,800,000 / 管理費¥1,200,000 / 目標50本）が設定されます。</li>
       <li>デモモードが <strong>ON</strong> になり、全ページに警告バナーが表示されます。</li>
     </ul>

@@ -99,7 +99,7 @@ require __DIR__ . '/parts/header.php';
       <table class="table table-hover table-sm mb-0">
         <thead class="table-dark">
           <tr>
-            <th>作業番号</th><th>椅子タイプ</th><th>数量</th>
+            <th>作業番号</th><th>製品タイプ</th><th>数量</th>
             <th>納期</th><th>優先度</th><th>ステータス</th>
             <th>工程進捗</th><th>遅延</th><th>操作</th>
           </tr>
@@ -118,6 +118,13 @@ require __DIR__ . '/parts/header.php';
             <td>
               <a href="progress_board.php?order_id=<?= $o['id'] ?>">
                 <strong><?= h($o['order_no']) ?></strong>
+              </a><br>
+              <a href="barcode_print.php?order_id=<?= $o['id'] ?>"
+                 class="text-decoration-none barcode-link"
+                 target="_blank"
+                 title="クリックでバーコード印刷">
+                <svg class="mini-bc" data-value="<?= h($o['order_no']) ?>"></svg>
+                <span><?= h($o['order_no']) ?></span>
               </a>
             </td>
             <td><?= h($o['chair_type_name']) ?><br>
@@ -162,5 +169,27 @@ require __DIR__ . '/parts/header.php';
     </div>
   </div>
 </div>
+
+<!-- JsBarcode for inline mini barcodes -->
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('svg.mini-bc').forEach(function(el) {
+        JsBarcode(el, el.dataset.value, {
+            format: 'CODE128',
+            lineColor: '#374151',
+            width: 1.2,
+            height: 28,
+            displayValue: false,
+            margin: 0
+        });
+    });
+});
+</script>
+<style>
+.barcode-link { display:inline-flex; align-items:center; gap:4px; font-size:.72rem; color:#6b7280 !important; }
+.barcode-link:hover { color:#1d4ed8 !important; }
+svg.mini-bc { display:block; max-width:120px; height:28px; }
+</style>
 
 <?php require __DIR__ . '/parts/footer.php'; ?>

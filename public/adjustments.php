@@ -81,12 +81,12 @@ require __DIR__ . '/parts/header.php';
 
 <h2><i class="bi bi-plus-minus"></i> 差分工程管理</h2>
 
-<!-- 椅子タイプ選択 -->
+<!-- 製品タイプ選択 -->
 <div class="card mb-3">
   <div class="card-body">
     <form method="get" class="row g-2 align-items-end">
       <div class="col-md-5">
-        <label class="form-label">差分版の椅子タイプを選択</label>
+        <label class="form-label">差分版の製品タイプを選択</label>
         <select name="chair_type_id" class="form-select" onchange="this.form.submit()">
           <option value="">― 選択してください ―</option>
           <?php foreach ($chairTypes as $ct): ?>

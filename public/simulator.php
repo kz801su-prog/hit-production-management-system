@@ -54,14 +54,14 @@ require __DIR__ . '/parts/header.php';
 ?>
 
 <h2><i class="bi bi-people"></i> 人員シミュレーター</h2>
-<p class="text-muted">椅子タイプ・数量・人数・稼働時間を設定して所要時間を試算します。</p>
+<p class="text-muted">製品タイプ・数量・人数・稼働時間を設定して所要時間を試算します。</p>
 
 <!-- 条件設定フォーム -->
 <div class="card mb-3">
   <div class="card-body">
     <form method="get" class="row g-3 align-items-end">
       <div class="col-md-3">
-        <label class="form-label">椅子タイプ</label>
+        <label class="form-label">製品タイプ</label>
         <select name="chair_type_id" class="form-select" required>
           <option value="">― 選択 ―</option>
           <?php foreach ($chairTypes as $ct): ?>

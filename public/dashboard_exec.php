@@ -1199,7 +1199,7 @@ require __DIR__ . '/parts/header.php';
 
 </div><!-- /execTabPane -->
 
-<!-- ===== 部門・個人統合タブ ===== -->
+<!-- ===== 部門ダッシュボードタブ ===== -->
 <div class="tab-pane fade" id="deptTabPane" role="tabpanel">
 
 <?php if ($word): ?>
@@ -1211,36 +1211,63 @@ require __DIR__ . '/parts/header.php';
 </div>
 <?php endif; ?>
 
+<!-- ヘッダー -->
 <div class="d-flex align-items-center mb-3 gap-2 flex-wrap">
-  <h2 class="mb-0"><i class="bi bi-people-fill"></i> 部門・個人</h2>
-  <small class="text-muted ms-2"><?= date('Y年n月j日', strtotime($today)) ?></small>
-
-  <!-- 個人ビュー切替ボタン -->
-  <div class="ms-auto d-flex gap-2 align-items-center flex-wrap">
-    <div class="btn-group btn-group-sm">
-      <button class="btn btn-primary active" id="viewDeptBtn" onclick="switchDeptView('dept')">
-        <i class="bi bi-diagram-3"></i> 部門
-      </button>
-      <button class="btn btn-outline-primary" id="viewIndivBtn" onclick="switchDeptView('indiv')">
-        <i class="bi bi-person-badge"></i> 個人
-      </button>
-    </div>
-    <select id="indivDeptFilter" class="form-select form-select-sm d-none" style="width:auto">
-      <option value="">全部門</option>
-      <?php foreach ($deptCards as $dc): ?>
-        <option value="<?= h($dc['dept_name']) ?>"><?= h($dc['dept_name']) ?></option>
-      <?php endforeach; ?>
-    </select>
-    <input type="search" id="indivSearch" class="form-control form-control-sm d-none" placeholder="氏名検索" style="width:110px">
+  <div>
+    <h2 class="mb-0"><i class="bi bi-people-fill"></i> 部門ダッシュボード</h2>
+    <small class="text-muted"><?= date('Y年n月j日（D）', strtotime($today)) ?></small>
+  </div>
+  <div class="ms-auto d-flex gap-2 align-items-center">
+    <input type="search" id="empSearch" class="form-control form-control-sm" placeholder="氏名検索" style="width:110px">
     <button class="btn btn-outline-secondary btn-sm" onclick="location.reload()">
       <i class="bi bi-arrow-clockwise"></i>
     </button>
   </div>
 </div>
 
-<!-- ===== 部門ビュー ===== -->
-<div id="deptView">
-<!-- 部門サマリーカード -->
+<!-- 全社サマリーKPI（4枚） -->
+<?php
+  $totalActive  = count(array_filter($allEmpData, fn($e) => isset($activeWorkAll[$e['emp_id']])));
+  $totalEmpCnt  = count($allEmpData);
+  $totalTodayH  = round(array_sum(array_column($allEmpData, 'today_hours')), 1);
+  $totalMonthH  = round(array_sum(array_column($allEmpData, 'month_hours')), 1);
+?>
+<div class="row g-2 mb-3">
+  <div class="col-6 col-sm-3">
+    <div class="kpi-card kpi-blue">
+      <i class="bi bi-people kpi-bg-icon"></i>
+      <div class="kpi-label">在籍</div>
+      <div class="kpi-value"><?= $totalEmpCnt ?></div>
+      <div class="kpi-sub">名</div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3">
+    <div class="kpi-card kpi-green">
+      <i class="bi bi-person-check kpi-bg-icon"></i>
+      <div class="kpi-label">作業中</div>
+      <div class="kpi-value"><?= $totalActive ?></div>
+      <div class="kpi-sub">名 / 今日</div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3">
+    <div class="kpi-card kpi-teal">
+      <i class="bi bi-clock kpi-bg-icon"></i>
+      <div class="kpi-label">今日 作業h</div>
+      <div class="kpi-value"><?= $totalTodayH ?></div>
+      <div class="kpi-sub">全社合計</div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3">
+    <div class="kpi-card kpi-purple">
+      <i class="bi bi-calendar3 kpi-bg-icon"></i>
+      <div class="kpi-label">月間 作業h</div>
+      <div class="kpi-value"><?= $totalMonthH ?></div>
+      <div class="kpi-sub">全社合計</div>
+    </div>
+  </div>
+</div>
+
+<!-- 部門カード -->
 <?php
   $deptPalette = [
       ['#1a56db','#3b82f6'], ['#0f9060','#10b981'], ['#6d28d9','#a78bfa'],
@@ -1256,7 +1283,7 @@ require __DIR__ . '/parts/header.php';
         : 0;
     [$dc1,$dc2] = $deptPalette[$dpi % count($deptPalette)]; $dpi++;
   ?>
-  <div class="col-12 col-md-6 col-xl-4">
+  <div class="col-12 col-md-6 col-xl-4 dept-card-col">
     <div class="dept-card h-100">
       <!-- header gradient -->
       <div class="dept-header" style="background:linear-gradient(135deg,<?= $dc1 ?>,<?= $dc2 ?>)">
@@ -1343,106 +1370,7 @@ require __DIR__ . '/parts/header.php';
     <div class="alert alert-info"><i class="bi bi-info-circle"></i> 部門データがありません。</div>
   </div>
 <?php endif; ?>
-</div>
-
-</div><!-- /deptView -->
-
-<!-- ===== 個人ビュー (同一タブ内) ===== -->
-<?php
-  $totalActive      = count(array_filter($allEmpData, fn($e) => isset($activeWorkAll[$e['emp_id']])));
-  $totalEmpCnt      = count($allEmpData);
-  $totalTodayH      = round(array_sum(array_column($allEmpData, 'today_hours')), 1);
-  $totalMonthH      = round(array_sum(array_column($allEmpData, 'month_hours')), 1);
-?>
-<div id="indivView" class="d-none">
-<!-- 個人サマリーKPI -->
-<div class="kpi-scroll-wrap row g-2 mb-3 flex-nowrap flex-md-wrap">
-  <div class="col-6 col-md-3">
-    <div class="kpi-card kpi-blue"><i class="bi bi-people kpi-bg-icon"></i>
-      <div class="kpi-label">在籍</div><div class="kpi-value"><?= $totalEmpCnt ?></div><div class="kpi-sub">名</div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="kpi-card kpi-green"><i class="bi bi-person-check kpi-bg-icon"></i>
-      <div class="kpi-label">作業中</div><div class="kpi-value"><?= $totalActive ?></div><div class="kpi-sub">名</div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="kpi-card kpi-teal"><i class="bi bi-clock kpi-bg-icon"></i>
-      <div class="kpi-label">今日作業h</div><div class="kpi-value"><?= $totalTodayH ?></div><div class="kpi-sub">全社</div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="kpi-card kpi-purple"><i class="bi bi-calendar3 kpi-bg-icon"></i>
-      <div class="kpi-label">月間作業h</div><div class="kpi-value"><?= $totalMonthH ?></div><div class="kpi-sub">全社</div>
-    </div>
-  </div>
-</div>
-<!-- 部門別タイルグリッド -->
-<?php
-$indivPalette = ['#1a56db','#0f9060','#6d28d9','#0e7490','#b45309','#c81e1e'];
-$ipi = 0;
-foreach ($empByDept as $deptName => $emps):
-  $deptActiveCount = count(array_filter($emps, fn($e) => isset($activeWorkAll[$e['emp_id']])));
-  $deptColor = $indivPalette[$ipi % count($indivPalette)]; $ipi++;
-?>
-<div class="indiv-dept-block mb-3" data-dept="<?= h($deptName) ?>">
-  <div class="d-flex align-items-center gap-2 mb-2 px-1">
-    <span class="fw-bold" style="color:<?= $deptColor ?>;font-size:.95rem">
-      <i class="bi bi-building me-1"></i><?= h($deptName) ?>
-    </span>
-    <span class="badge" style="background:<?= $deptColor ?>"><?= count($emps) ?>名</span>
-    <?php if ($deptActiveCount): ?><span class="badge bg-success"><?= $deptActiveCount ?>名作業中</span><?php endif; ?>
-    <div class="flex-grow-1" style="height:2px;background:<?= $deptColor ?>;opacity:.25;border-radius:1px"></div>
-  </div>
-  <div class="row g-2">
-  <?php foreach ($emps as $emp):
-    $aw      = $activeWorkAll[$emp['emp_id']] ?? null;
-    $planned = $aw ? (int)($aw['planned_total_minutes'] ?? 0) : 0;
-    $elapsed = $aw ? (int)$aw['elapsed_min'] : 0;
-    $pct     = ($planned > 0) ? min(100, round($elapsed / $planned * 100)) : 0;
-    $tc      = $aw ? 'tile-active' : ($emp['worked_today'] ? 'tile-break' : 'tile-idle');
-  ?>
-    <div class="col-12 col-sm-6 col-lg-4 col-xl-3 indiv-emp-row" data-name="<?= h(mb_strtolower($emp['name'])) ?>">
-      <div class="worker-tile <?= $tc ?>">
-        <div class="tile-hd">
-          <?php if ($aw): ?><span class="pulse-dot"></span><?php endif; ?>
-          <span class="tile-name"><?= h($emp['name']) ?></span>
-          <span class="ms-auto tile-stats"><?= h($emp['position_name'] ?? '') ?></span>
-        </div>
-        <div class="tile-bd">
-          <?php if ($aw): ?>
-            <div class="tile-proc fw-semibold text-success"><?= h($aw['process_name']) ?>
-              <span class="text-muted fw-normal ms-1 small"><?= h($aw['order_no']) ?></span></div>
-            <?php if ($planned > 0): ?>
-            <div class="tile-prog"><div class="tile-prog-fill"
-              style="width:<?= $pct ?>%;background:<?= $pct >= 100 ? '#ef4444' : '#059669' ?>"></div></div>
-            <div class="d-flex justify-content-between tile-stats mt-1">
-              <span><?= floor($elapsed/60) ?>h<?= str_pad($elapsed%60,2,'0',STR_PAD_LEFT) ?>m</span>
-              <span class="<?= $pct >= 100 ? 'text-danger fw-bold' : '' ?>"><?= $pct ?>%</span>
-            </div>
-            <?php else: ?>
-            <div class="tile-stats"><?= $elapsed ?>分経過</div>
-            <?php endif; ?>
-          <?php else: ?>
-            <div class="tile-proc text-muted"><?= $emp['worked_today'] ? '休憩中' : '未開始' ?></div>
-          <?php endif; ?>
-          <div class="tile-stats mt-1 pt-1 border-top d-flex justify-content-between">
-            <span>今日 <strong><?= $emp['today_hours'] ?>h</strong></span>
-            <span>月間 <strong><?= $emp['month_hours'] ?>h</strong></span>
-            <span><?= (int)$emp['month_orders'] ?>件</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  <?php endforeach; ?>
-  </div>
-</div>
-<?php endforeach; ?>
-<?php if (empty($allEmpData)): ?>
-  <div class="alert alert-info"><i class="bi bi-info-circle"></i> 社員データがありません。</div>
-<?php endif; ?>
-</div><!-- /indivView -->
+</div><!-- /row deptCards -->
 
 <?php $_ = [$w_monthSummary, $w_todayTotalMinutes, $w_todayPlannedTotal, $w_activeWork, $w_todayLogs, $w_deptQueue, $w_skills]; ?>
 
@@ -1793,51 +1721,25 @@ function toggleWord(id, btn){
     btn.textContent = expanded ? '▲' : '▼';
 }
 
-// 部門・個人ビュー切り替え
-function switchDeptView(view){
-    const dv  = document.getElementById('deptView');
-    const iv  = document.getElementById('indivView');
-    const db  = document.getElementById('viewDeptBtn');
-    const ib  = document.getElementById('viewIndivBtn');
-    const fcs = [document.getElementById('indivDeptFilter'), document.getElementById('indivSearch')];
-    if(view === 'indiv'){
-        dv && dv.classList.add('d-none');
-        iv && iv.classList.remove('d-none');
-        db && (db.classList.remove('active','btn-primary'), db.classList.add('btn-outline-primary'));
-        ib && (ib.classList.add('active','btn-primary'),    ib.classList.remove('btn-outline-primary'));
-        fcs.forEach(el => el && el.classList.remove('d-none'));
-    } else {
-        dv && dv.classList.remove('d-none');
-        iv && iv.classList.add('d-none');
-        db && (db.classList.add('active','btn-primary'),   db.classList.remove('btn-outline-primary'));
-        ib && (ib.classList.remove('active','btn-primary'), ib.classList.add('btn-outline-primary'));
-        fcs.forEach(el => el && el.classList.add('d-none'));
-    }
-}
-
-// 個人タブ: 部門フィルター + 氏名検索
+// 部門ダッシュボード: 氏名検索
 (function(){
-    const deptSel = document.getElementById('indivDeptFilter');
-    const nameInp = document.getElementById('indivSearch');
-    function applyFilter(){
-        const dept = deptSel ? deptSel.value.toLowerCase() : '';
-        const name = nameInp ? nameInp.value.toLowerCase() : '';
-        document.querySelectorAll('.indiv-dept-block').forEach(function(block){
-            const blockDept = block.dataset.dept.toLowerCase();
-            const deptMatch = !dept || blockDept === dept;
-            if(!deptMatch){ block.style.display='none'; return; }
-            block.style.display = '';
-            let visCount = 0;
-            block.querySelectorAll('.indiv-emp-row').forEach(function(row){
-                const show = !name || row.dataset.name.includes(name);
-                row.style.display = show ? '' : 'none';
-                if(show) visCount++;
+    const inp = document.getElementById('empSearch');
+    if(!inp) return;
+    inp.addEventListener('input', function(){
+        const q = this.value.toLowerCase();
+        document.querySelectorAll('.dept-card-col').forEach(function(col){
+            if(!q){ col.style.display = ''; return; }
+            const tiles = col.querySelectorAll('.worker-tile');
+            let vis = 0;
+            tiles.forEach(function(tile){
+                const nm = (tile.querySelector('.tile-name') || tile).textContent.toLowerCase();
+                const show = nm.includes(q);
+                tile.style.display = show ? '' : 'none';
+                if(show) vis++;
             });
-            block.style.display = visCount > 0 ? '' : 'none';
+            col.style.display = vis > 0 ? '' : 'none';
         });
-    }
-    if(deptSel) deptSel.addEventListener('change', applyFilter);
-    if(nameInp) nameInp.addEventListener('input', applyFilter);
+    });
 })();
 
 // 工程ステータス ドーナツチャート

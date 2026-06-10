@@ -184,7 +184,7 @@ $pmap      = $boardData['progress_map'] ?? [];
     <thead class="table-dark">
       <tr>
         <th style="min-width:130px">作業番号</th>
-        <th>椅子タイプ</th>
+        <th>製品タイプ</th>
         <th>数量</th>
         <th>納期</th>
         <?php foreach ($processes as $p): ?>

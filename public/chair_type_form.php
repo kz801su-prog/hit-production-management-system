@@ -1,7 +1,7 @@
 <?php
 // =====================================================
-// 椅子タイプ登録・編集フォーム
-// 目的: 椅子タイプの基本情報を登録・更新する
+// 製品タイプ登録・編集フォーム
+// 目的: 製品タイプの基本情報を登録・更新する
 // 接続テーブル: chair_types, chair_type_groups
 // 権限: process_leader以上
 // =====================================================
@@ -18,13 +18,13 @@ requireRole('process_leader');
 
 $id        = getInt('id');
 $isEdit    = $id > 0;
-$pageTitle = $isEdit ? '椅子タイプ編集' : '椅子タイプ登録';
+$pageTitle = $isEdit ? '製品タイプ編集' : '製品タイプ登録';
 
 $chairType = null;
 if ($isEdit) {
     $chairType = dbFetchOne("SELECT * FROM chair_types WHERE id = ? AND is_active = 1", [$id]);
     if (!$chairType) {
-        setFlash('椅子タイプが見つかりません。', 'danger');
+        setFlash('製品タイプが見つかりません。', 'danger');
         header('Location: ' . APP_URL . '/chair_types.php');
         exit;
     }
@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     array_merge(array_values($data), [$id])
                 );
                 auditLog('update', 'chair_types', $id, $before, $data);
-                setFlash('椅子タイプを更新しました。');
+                setFlash('製品タイプを更新しました。');
             } else {
                 $newId = dbExecute(
                     "INSERT INTO chair_types
@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     array_values($data)
                 );
                 auditLog('create', 'chair_types', (int)$newId, null, $data);
-                setFlash('椅子タイプを登録しました。');
+                setFlash('製品タイプを登録しました。');
                 header('Location: ' . APP_URL . '/chair_type_form.php?id=' . $newId);
                 exit;
             }
@@ -98,7 +98,7 @@ require __DIR__ . '/parts/header.php';
   <div class="col">
     <nav aria-label="breadcrumb">
       <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="chair_types.php">椅子タイプ一覧</a></li>
+        <li class="breadcrumb-item"><a href="chair_types.php">製品タイプ一覧</a></li>
         <li class="breadcrumb-item active"><?= $pageTitle ?></li>
       </ol>
     </nav>

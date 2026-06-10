@@ -476,7 +476,7 @@ require __DIR__ . '/parts/header.php';
         <div class="table-responsive" style="max-height:420px;overflow-y:auto">
           <table class="table table-sm table-hover mb-0">
             <thead class="table-light sticky-top">
-              <tr><th>日時</th><th>工程</th><th>作業指示</th><th>椅子タイプ</th><th class="text-end">時間</th></tr>
+              <tr><th>日時</th><th>工程</th><th>作業指示</th><th>製品タイプ</th><th class="text-end">時間</th></tr>
             </thead>
             <tbody>
             <?php if ($workHistory): ?>

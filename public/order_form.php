@@ -1,7 +1,7 @@
 <?php
 // =====================================================
 // 作業指示登録フォーム
-// 目的: 椅子タイプを選択し、標準時間プレビュー付きで作業指示を作成
+// 目的: 製品タイプを選択し、標準時間プレビュー付きで作業指示を作成
 // 接続テーブル: manufacturing_orders, chair_types
 // 権限: process_leader以上
 // =====================================================
@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
 
     if (!$data['chair_type_id'] || $data['quantity'] < 1) {
-        setFlash('椅子タイプと数量は必須です。', 'danger');
+        setFlash('製品タイプと数量は必須です。', 'danger');
         header('Location: ' . APP_URL . '/order_form.php');
         exit;
     }
@@ -80,7 +80,7 @@ require __DIR__ . '/parts/header.php';
         <form method="post" id="orderForm">
           <?= csrfField() ?>
           <div class="mb-3">
-            <label class="form-label fw-bold">椅子タイプ <span class="text-danger">*</span></label>
+            <label class="form-label fw-bold">製品タイプ <span class="text-danger">*</span></label>
             <select name="chair_type_id" id="chairTypeSelect" class="form-select" required>
               <option value="">― 選択してください ―</option>
               <?php foreach ($chairTypes as $ct): ?>
@@ -179,7 +179,7 @@ require __DIR__ . '/parts/header.php';
           </table>
         <?php else: ?>
           <p class="text-muted text-center py-4">
-            椅子タイプと数量を選択して「標準時間プレビュー」ボタンを押してください。
+            製品タイプと数量を選択して「標準時間プレビュー」ボタンを押してください。
           </p>
         <?php endif; ?>
       </div>
@@ -192,7 +192,7 @@ $extraJs = <<<JS
 function previewStdTime() {
   const ctId = document.getElementById('chairTypeSelect').value;
   const qty  = document.getElementById('quantityInput').value;
-  if (!ctId || !qty) { alert('椅子タイプと数量を選択してください'); return; }
+  if (!ctId || !qty) { alert('製品タイプと数量を選択してください'); return; }
   window.location.href = '?preview_ct=' + ctId + '&preview_qty=' + qty;
 }
 JS;

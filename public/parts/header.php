@@ -32,10 +32,10 @@ $user      = getCurrentUser();
         <li class="nav-item">
           <a class="nav-link" href="<?= APP_URL ?>/dashboard.php"><i class="bi bi-speedometer2"></i> ダッシュボード</a>
         </li>
-        <!-- 椅子タイプライブラリー -->
+        <!-- 製品タイプライブラリー -->
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-            <i class="bi bi-archive"></i> 椅子タイプ
+            <i class="bi bi-archive"></i> 製品タイプ
           </a>
           <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="<?= APP_URL ?>/chair_types.php">一覧・検索</a></li>

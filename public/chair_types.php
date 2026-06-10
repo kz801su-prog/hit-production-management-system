@@ -1,7 +1,7 @@
 <?php
 // =====================================================
-// 椅子タイプ一覧・検索
-// 目的: 椅子タイプを写真・バージョン付きで検索・表示
+// 製品タイプ一覧・検索
+// 目的: 製品タイプを写真・バージョン付きで検索・表示
 // 接続テーブル: chair_types, chair_type_groups, chair_type_media, chair_type_keywords
 // 呼び出し先: chair_type_form.php, standards.php, adjustments.php
 // =====================================================
@@ -14,7 +14,7 @@ require_once __DIR__ . '/../app/logger.php';
 require_once __DIR__ . '/../app/chair_type_service.php';
 
 requireLogin();
-$pageTitle = '椅子タイプ一覧';
+$pageTitle = '製品タイプ一覧';
 
 // 検索フィルタ
 $filters = [
@@ -46,7 +46,7 @@ require __DIR__ . '/parts/header.php';
 ?>
 
 <div class="row mb-3">
-  <div class="col"><h2><i class="bi bi-archive"></i> 椅子タイプ一覧</h2></div>
+  <div class="col"><h2><i class="bi bi-archive"></i> 製品タイプ一覧</h2></div>
   <?php if (isLeader()): ?>
   <div class="col-auto">
     <a href="<?= APP_URL ?>/chair_type_form.php" class="btn btn-primary">
@@ -136,7 +136,7 @@ require __DIR__ . '/parts/header.php';
 <?php endforeach; ?>
 <?php if (empty($chairTypes)): ?>
   <div class="col-12 text-center py-5 text-muted">
-    <i class="bi bi-search fs-1"></i><br>該当する椅子タイプが見つかりません
+    <i class="bi bi-search fs-1"></i><br>該当する製品タイプが見つかりません
   </div>
 <?php endif; ?>
 </div>

@@ -29,13 +29,17 @@ if ($orderId) {
     );
     if ($row) $orders = [$row];
 } else {
-    // 直近30件（本日 + 未完了）
+    // 未完了 + 取消 + 完了（2ヶ月以内）を表示
+    $twoMonthsAgo = date('Y-m-d H:i:s', strtotime('-2 months'));
     $orders = dbFetchAll(
         "SELECT mo.*, ct.chair_type_code, ct.chair_type_name
          FROM manufacturing_orders mo
          JOIN chair_types ct ON mo.chair_type_id = ct.id
          WHERE mo.status NOT IN ('completed','cancelled')
-         ORDER BY mo.created_at DESC LIMIT 30"
+            OR (mo.status = 'cancelled')
+            OR (mo.status = 'completed' AND mo.updated_at >= ?)
+         ORDER BY mo.created_at DESC LIMIT 60",
+        [$twoMonthsAgo]
     );
 }
 
@@ -58,10 +62,14 @@ require __DIR__ . '/parts/header.php';
 <?php endif; ?>
 
 <div class="row g-3" id="barcodeContainer">
-<?php foreach ($orders as $o): ?>
+<?php foreach ($orders as $o):
+    $isCancelled = ($o['status'] === 'cancelled');
+    $isCompleted = ($o['status'] === 'completed');
+    $cardClass   = $isCancelled ? 'border-danger' : ($isCompleted ? 'border-success' : 'border-dark');
+?>
   <div class="col-md-6 col-lg-4">
-    <div class="card border-dark barcode-card">
-      <div class="card-body p-2 text-center">
+    <div class="card <?= $cardClass ?> barcode-card">
+      <div class="card-body p-2 text-center barcode-wrap">
         <div class="fw-bold small mb-1"><?= h($o['chair_type_code']) ?> — <?= h($o['chair_type_name']) ?></div>
         <?php if (!empty($o['customer_name']) || !empty($o['project_name'])): ?>
           <div class="small text-muted mb-1">
@@ -71,10 +79,22 @@ require __DIR__ . '/parts/header.php';
           </div>
         <?php endif; ?>
 
-        <svg class="barcode" id="bc-<?= $o['id'] ?>"></svg>
+        <div class="barcode-svg-wrap">
+          <svg class="barcode" id="bc-<?= $o['id'] ?>"></svg>
+          <?php if ($isCancelled): ?>
+            <div class="bc-cancel-overlay"><span>取消</span></div>
+          <?php elseif ($isCompleted): ?>
+            <div class="bc-done-overlay"><span>終了</span></div>
+          <?php endif; ?>
+        </div>
 
         <div class="mt-1 small">
           <span class="fw-bold"><?= h($o['order_no']) ?></span>
+          <?php if ($isCancelled): ?>
+            <span class="badge bg-danger ms-1">取消済</span>
+          <?php elseif ($isCompleted): ?>
+            <span class="badge bg-success ms-1">完了</span>
+          <?php endif; ?>
         </div>
         <div class="row text-start small mt-1 px-1">
           <div class="col-6">
@@ -84,7 +104,7 @@ require __DIR__ . '/parts/header.php';
           <div class="col-6">
             <span class="text-muted">納期:</span>
             <?php if ($o['due_date']): ?>
-              <span class="<?= (strtotime($o['due_date']) < time()) ? 'text-danger fw-bold' : '' ?>">
+              <span class="<?= (strtotime($o['due_date']) < time() && !$isCompleted) ? 'text-danger fw-bold' : '' ?>">
                 <?= formatDate($o['due_date']) ?>
               </span>
             <?php else: ?>―<?php endif; ?>
@@ -137,6 +157,67 @@ document.addEventListener('DOMContentLoaded', function() {
   nav, footer { display: none !important; }
 }
 .barcode-card svg { max-width: 100%; height: 65px; }
+
+/* バーコードSVG + オーバーレイのコンテナ */
+.barcode-svg-wrap {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+/* 取消: 赤の斜め横線 */
+.bc-cancel-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.bc-cancel-overlay::before,
+.bc-cancel-overlay::after {
+  content: '';
+  position: absolute;
+  left: 5%;
+  width: 90%;
+  height: 4px;
+  background: rgba(220,38,38,.85);
+  border-radius: 2px;
+}
+.bc-cancel-overlay::before { transform: rotate(12deg);  }
+.bc-cancel-overlay::after  { transform: rotate(-12deg); }
+.bc-cancel-overlay span {
+  position: relative;
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #dc2626;
+  background: rgba(255,255,255,.8);
+  padding: 0 6px;
+  border: 2px solid #dc2626;
+  border-radius: 3px;
+  letter-spacing: .05em;
+}
+
+/* 完了: 赤の「終了」スタンプ */
+.bc-done-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.bc-done-overlay span {
+  font-size: 2rem;
+  font-weight: 900;
+  color: rgba(220,38,38,.75);
+  border: 3px solid rgba(220,38,38,.75);
+  border-radius: 6px;
+  padding: 2px 10px;
+  transform: rotate(-15deg);
+  letter-spacing: .1em;
+  background: rgba(255,255,255,.35);
+}
 </style>
 
 <?php require __DIR__ . '/parts/footer.php'; ?>
