@@ -43,6 +43,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isLeader()) {
 
 $orders = getOrderList($filters);
 
+// 品質評価済みのorder_idセット
+$evaluatedIds = [];
+if ($orders) {
+    $ids = implode(',', array_map('intval', array_column($orders, 'id')));
+    if ($ids) {
+        $rows = dbFetchAll("SELECT manufacturing_order_id FROM order_quality_evaluations WHERE manufacturing_order_id IN ($ids)");
+        foreach ($rows as $r) $evaluatedIds[$r['manufacturing_order_id']] = true;
+    }
+}
+
 require __DIR__ . '/parts/header.php';
 ?>
 
@@ -149,6 +159,17 @@ require __DIR__ . '/parts/header.php';
             </td>
             <td>
               <a href="progress_board.php?order_id=<?= $o['id'] ?>" class="btn btn-sm btn-outline-primary">進捗</a>
+              <?php if (isLeader() && $o['status'] === 'completed'): ?>
+                <?php if (!isset($evaluatedIds[$o['id']])): ?>
+                  <a href="quality_eval.php?order_id=<?= $o['id'] ?>" class="btn btn-sm btn-warning">
+                    <i class="bi bi-star"></i> 品質評価
+                  </a>
+                <?php else: ?>
+                  <a href="quality_eval.php?order_id=<?= $o['id'] ?>" class="btn btn-sm btn-outline-success" title="評価済み（修正可）">
+                    <i class="bi bi-star-fill"></i>
+                  </a>
+                <?php endif; ?>
+              <?php endif; ?>
               <?php if (isLeader() && $o['status'] !== 'completed' && $o['status'] !== 'cancelled'): ?>
               <form method="post" class="d-inline">
                 <?= csrfField() ?>

@@ -87,8 +87,17 @@ $user      = getCurrentUser();
           </a>
           <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="<?= APP_URL ?>/evaluations.php">個人評価</a></li>
+            <li><a class="dropdown-item" href="<?= APP_URL ?>/improvement_issues.php">
+              <i class="bi bi-tools"></i> 課題管理（カイゼン）
+            </a></li>
             <li><a class="dropdown-item" href="<?= APP_URL ?>/improvements.php">改善管理</a></li>
             <li><a class="dropdown-item" href="<?= APP_URL ?>/simulator.php">人員シミュレーター</a></li>
+            <?php if (isPresidentOrAdmin()): ?>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="<?= APP_URL ?>/eval_criteria.php">
+              <i class="bi bi-sliders"></i> 評価基準設定
+            </a></li>
+            <?php endif; ?>
           </ul>
         </li>
         <?php endif; ?>

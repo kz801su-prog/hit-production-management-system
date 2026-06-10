@@ -621,7 +621,7 @@ require __DIR__ . '/parts/header.php';
 .process-row-delayed  { border-left:5px solid #f59e0b; background:#1c1810; }
 .process-row-normal   { border-left:5px solid #10b981; background:#0d1f18; }
 .monitor-table td, .monitor-table th { padding:.5rem .75rem; vertical-align:middle; font-size:.85rem; color:#e2e8f0; border-color:rgba(255,255,255,.08); }
-.monitor-table thead th { background:rgba(255,255,255,.06); font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; color:#94a3b8; }
+.monitor-table thead th { background:rgba(255,255,255,.06); font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; color:#67e8f9; }
 
 /* ── misc ── */
 .diff-over { color:#dc3545; } .diff-under { color:#198754; }
@@ -631,98 +631,98 @@ require __DIR__ . '/parts/header.php';
 .exec-kpi-card { border-radius:10px; border-left:4px solid; }
 
 /* ════════════════════════════════════════
-   EXEC DARK THEME
+   EXEC GRAY THEME  (黒→グレー)
 ════════════════════════════════════════ */
 .exec-dark {
-    background: #070d1a;
+    background: #1e293b;
     background-image:
-        radial-gradient(ellipse 55% 40% at 8%  8%,  rgba(0,180,255,.08) 0%, transparent 65%),
-        radial-gradient(ellipse 45% 45% at 92% 90%, rgba(120,0,255,.05) 0%, transparent 60%);
+        radial-gradient(ellipse 55% 40% at 8%  8%,  rgba(0,180,255,.12) 0%, transparent 65%),
+        radial-gradient(ellipse 45% 45% at 92% 90%, rgba(120,0,255,.08) 0%, transparent 60%);
     border-radius: 14px;
     padding: 1.25rem 1rem;
 }
-/* dark tab nav */
+/* gray tab nav */
 #dashTabs {
-    background: #070d1a !important;
+    background: #1e293b !important;
     border-radius: 10px 10px 0 0;
-    border-bottom: 1px solid rgba(255,255,255,.1) !important;
+    border-bottom: 1px solid rgba(255,255,255,.15) !important;
     padding: 0 .25rem;
 }
-#dashTabs .nav-link { color: #475569 !important; border-bottom-color: transparent !important; }
-#dashTabs .nav-link:hover { color: #94a3b8 !important; border-bottom-color: rgba(56,189,248,.4) !important; }
+#dashTabs .nav-link { color: #94a3b8 !important; border-bottom-color: transparent !important; }
+#dashTabs .nav-link:hover { color: #e2e8f0 !important; border-bottom-color: rgba(56,189,248,.4) !important; }
 #dashTabs .nav-link.active { color: #38bdf8 !important; border-bottom-color: #38bdf8 !important; }
 /* KPI cards */
 .ex-kpi {
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(255,255,255,.09);
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.13);
     border-radius: 12px; padding: .8rem 1rem;
     position: relative; overflow: hidden;
     transition: border-color .2s, box-shadow .2s; height: 100%;
 }
-.ex-kpi:hover { border-color: rgba(255,255,255,.22); box-shadow: 0 0 22px rgba(56,189,248,.1); }
-.ex-kpi .kpi-bg-icon { font-size: 2.8rem; opacity: .09; }
-.ex-kpi .kpi-label { color: #94a3b8; font-size: .63rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; margin-bottom: .2rem; }
+.ex-kpi:hover { border-color: rgba(255,255,255,.28); box-shadow: 0 0 22px rgba(56,189,248,.12); }
+.ex-kpi .kpi-bg-icon { font-size: 2.8rem; opacity: .11; }
+.ex-kpi .kpi-label { color: #67e8f9; font-size: .63rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; margin-bottom: .2rem; }
 .ex-kpi .kpi-value { font-size: 1.9rem; font-weight: 900; line-height: 1; letter-spacing: -.03em; }
-.ex-kpi .kpi-sub   { font-size: .72rem; color: #64748b; margin-top: .18rem; }
+.ex-kpi .kpi-sub   { font-size: .72rem; color: #cbd5e1; margin-top: .18rem; }
 /* neon colors */
-.neon-b { color: #38bdf8; text-shadow: 0 0 16px rgba(56,189,248,.65),  0 0 32px rgba(56,189,248,.25); }
-.neon-g { color: #4ade80; text-shadow: 0 0 16px rgba(74,222,128,.65),  0 0 32px rgba(74,222,128,.25); }
-.neon-a { color: #fbbf24; text-shadow: 0 0 16px rgba(251,191,36,.65),  0 0 32px rgba(251,191,36,.25); }
-.neon-r { color: #f87171; text-shadow: 0 0 16px rgba(248,113,113,.65), 0 0 32px rgba(248,113,113,.25); }
-.neon-p { color: #c084fc; text-shadow: 0 0 16px rgba(192,132,252,.65), 0 0 32px rgba(192,132,252,.25); }
-.neon-t { color: #2dd4bf; text-shadow: 0 0 16px rgba(45,212,191,.65),  0 0 32px rgba(45,212,191,.25); }
-/* dark content cards */
+.neon-b { color: #38bdf8; text-shadow: 0 0 14px rgba(56,189,248,.6),  0 0 28px rgba(56,189,248,.2); }
+.neon-g { color: #4ade80; text-shadow: 0 0 14px rgba(74,222,128,.6),  0 0 28px rgba(74,222,128,.2); }
+.neon-a { color: #fbbf24; text-shadow: 0 0 14px rgba(251,191,36,.6),  0 0 28px rgba(251,191,36,.2); }
+.neon-r { color: #f87171; text-shadow: 0 0 14px rgba(248,113,113,.6), 0 0 28px rgba(248,113,113,.2); }
+.neon-p { color: #c084fc; text-shadow: 0 0 14px rgba(192,132,252,.6), 0 0 28px rgba(192,132,252,.2); }
+.neon-t { color: #2dd4bf; text-shadow: 0 0 14px rgba(45,212,191,.6),  0 0 28px rgba(45,212,191,.2); }
+/* content cards */
 .ex-card {
-    background: rgba(255,255,255,.03);
-    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.12);
     border-radius: 12px; overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0,0,0,.4);
+    box-shadow: 0 4px 20px rgba(0,0,0,.3);
 }
 .ex-card-hd {
-    background: rgba(255,255,255,.05);
-    border-bottom: 1px solid rgba(255,255,255,.07);
-    padding: .5rem .9rem; color: #64748b;
+    background: rgba(255,255,255,.08);
+    border-bottom: 1px solid rgba(255,255,255,.1);
+    padding: .5rem .9rem; color: #e2e8f0;
     font-size: .7rem; font-weight: 700;
     letter-spacing: .09em; text-transform: uppercase;
     display: flex; align-items: center; justify-content: space-between;
 }
 .ex-card-bd { padding: .6rem .75rem; }
-/* dark progress */
-.ex-prog { background: rgba(255,255,255,.07); border-radius: 10px; height: 12px; overflow: hidden; }
+/* progress bar */
+.ex-prog { background: rgba(255,255,255,.1); border-radius: 10px; height: 12px; overflow: hidden; }
 .ex-prog-g { height: 100%; border-radius: 10px; background: linear-gradient(90deg,#065f46,#059669,#10b981,#34d399); box-shadow: 0 0 12px rgba(16,185,129,.45); transition: width .8s; }
 /* section dividers */
 .ex-sec {
     font-size: .62rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
-    color: #64748b; padding: .2rem 0 .4rem;
+    color: #cbd5e1; padding: .2rem 0 .4rem;
     display: flex; align-items: center; gap: .5rem;
     margin-top: .5rem; margin-bottom: .6rem;
 }
 .ex-sec::before { content:''; display:inline-block; width:3px; height:14px; border-radius:2px; background:#38bdf8; box-shadow:0 0 8px #38bdf8; }
-.ex-sec::after  { content:''; flex:1; height:1px; background:rgba(255,255,255,.12); }
-/* dark alert rows */
-.ex-al { padding: .5rem .8rem; border-bottom: 1px solid rgba(255,255,255,.04); color: #cbd5e1; font-size: .82rem; display: block; text-decoration: none; }
+.ex-sec::after  { content:''; flex:1; height:1px; background:rgba(255,255,255,.18); }
+/* alert rows */
+.ex-al { padding: .5rem .8rem; border-bottom: 1px solid rgba(255,255,255,.06); color: #f1f5f9; font-size: .82rem; display: block; text-decoration: none; }
 .ex-al:last-child { border-bottom: none; }
-.ex-al:hover { background: rgba(255,255,255,.03); }
-.ex-al.c { border-left: 3px solid #ef4444; }
-.ex-al.d { border-left: 3px solid #f59e0b; }
-/* dept cards dark */
-.ex-dept { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; overflow: hidden; transition: border-color .2s; }
-.ex-dept:hover { border-color: rgba(255,255,255,.18); }
+.ex-al:hover { background: rgba(255,255,255,.05); }
+.ex-al.c { border-left: 3px solid #f87171; }
+.ex-al.d { border-left: 3px solid #fbbf24; }
+/* dept cards */
+.ex-dept { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; overflow: hidden; transition: border-color .2s; }
+.ex-dept:hover { border-color: rgba(255,255,255,.24); }
 .ex-dept-hd { padding: .5rem .75rem; font-weight: 700; font-size: .85rem; }
-.ex-dept-bar { height: 5px; border-radius: 3px; background: rgba(255,255,255,.12); margin-top: .3rem; }
-.ex-dept-fill { height: 100%; border-radius: 3px; background: rgba(255,255,255,.85); box-shadow: 0 0 6px rgba(255,255,255,.4); transition: width .6s; }
-.ex-dept-bd { padding: .45rem .6rem; background: rgba(0,0,0,.25); }
+.ex-dept-bar { height: 5px; border-radius: 3px; background: rgba(255,255,255,.15); margin-top: .3rem; }
+.ex-dept-fill { height: 100%; border-radius: 3px; background: rgba(255,255,255,.9); box-shadow: 0 0 6px rgba(255,255,255,.4); transition: width .6s; }
+.ex-dept-bd { padding: .45rem .6rem; background: rgba(0,0,0,.15); }
 .ex-dept-stat-val { font-size: 1.15rem; font-weight: 800; line-height: 1.1; }
-.ex-dept-stat-lbl { font-size: .63rem; color: #64748b; }
+.ex-dept-stat-lbl { font-size: .63rem; color: #cbd5e1; }
 /* budget kpi */
-.ex-bkpi { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); border-radius: 10px; padding: .65rem .9rem; position: relative; overflow: hidden; }
-.ex-bkpi .kpi-bg-icon { font-size: 2.5rem; opacity: .07; }
-.ex-bkpi .kpi-label { color: #94a3b8; font-size: .63rem; text-transform: uppercase; letter-spacing: .09em; font-weight: 700; margin-bottom: .15rem; }
+.ex-bkpi { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.11); border-radius: 10px; padding: .65rem .9rem; position: relative; overflow: hidden; }
+.ex-bkpi .kpi-bg-icon { font-size: 2.5rem; opacity: .09; }
+.ex-bkpi .kpi-label { color: #67e8f9; font-size: .63rem; text-transform: uppercase; letter-spacing: .09em; font-weight: 700; margin-bottom: .15rem; }
 .ex-bkpi .kpi-value { font-size: 1.65rem; font-weight: 900; line-height: 1.1; letter-spacing: -.03em; }
-.ex-bkpi .kpi-sub   { font-size: .7rem; color: #64748b; margin-top: .15rem; }
+.ex-bkpi .kpi-sub   { font-size: .7rem; color: #cbd5e1; margin-top: .15rem; }
 /* cost values */
 .ex-cost-val { font-weight: 800; font-size: 1.05rem; }
-.ex-cost-lbl { font-size: .7rem; color: #64748b; margin-top: .1rem; }
+.ex-cost-lbl { font-size: .7rem; color: #cbd5e1; margin-top: .1rem; }
 /* ── Gauge (タコメーター) ── */
 .gauge-wrap { position:relative; }
 .gauge-overlay {
@@ -730,8 +730,8 @@ require __DIR__ . '/parts/header.php';
     text-align:center; pointer-events:none; width:100%;
 }
 .gauge-pct  { font-size:clamp(1.3rem,3.5vw,1.8rem); font-weight:900; line-height:1; letter-spacing:-.04em; }
-.gauge-qty  { font-size:.75rem; color:#64748b; margin-top:.1rem; }
-.gauge-lbl  { font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:#475569; margin-top:.1rem; }
+.gauge-qty  { font-size:.75rem; color:#cbd5e1; margin-top:.1rem; }
+.gauge-lbl  { font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:#94a3b8; margin-top:.1rem; }
 </style>
 
 <!-- ===== タブナビゲーション ===== -->
@@ -781,22 +781,22 @@ require __DIR__ . '/parts/header.php';
 <!-- ヘッダーバー -->
 <div class="d-flex align-items-center mb-3 gap-2 flex-wrap">
   <div>
-    <div style="font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:#1d2d44;font-weight:700">MANUFACTURING MANAGEMENT DASHBOARD</div>
+    <div style="font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:#64748b;font-weight:700">MANUFACTURING MANAGEMENT DASHBOARD</div>
     <h2 class="mb-0" style="color:#e2e8f0;font-weight:900;letter-spacing:-.02em">
       <i class="bi bi-speedometer2 neon-b me-1"></i>生産管理ダッシュボード
     </h2>
-    <small style="color:#334155">
+    <small style="color:#cbd5e1">
       <?= date('Y年n月j日（D）', strtotime($today)) ?>
       &nbsp;<span id="liveClock" class="fw-bold neon-b" style="font-size:.9rem"></span>
     </small>
   </div>
   <div class="ms-auto d-flex gap-1">
     <?php if (isPresidentOrAdmin()): ?>
-    <a href="admin_settings.php#cost" class="btn btn-sm" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#94a3b8">
+    <a href="admin_settings.php#cost" class="btn btn-sm" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#e2e8f0">
       <i class="bi bi-gear"></i><span class="d-none d-md-inline"> 設定</span>
     </a>
     <?php endif; ?>
-    <button class="btn btn-sm" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#94a3b8" onclick="location.reload()">
+    <button class="btn btn-sm" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#e2e8f0" onclick="location.reload()">
       <i class="bi bi-arrow-clockwise"></i>
     </button>
   </div>
@@ -867,8 +867,8 @@ require __DIR__ . '/parts/header.php';
 <div class="ex-card mb-3">
   <div class="ex-card-hd">
     <span><i class="bi bi-bar-chart-fill me-1" style="color:#38bdf8"></i>月間生産進捗 <span style="color:#38bdf8"><?= date('n月') ?></span></span>
-    <span style="color:#334155;font-size:.75rem;font-weight:400;letter-spacing:0;text-transform:none">
-      完成 <strong class="neon-g"><?= number_format($completedQty) ?></strong>本 ／ 目標 <strong style="color:#94a3b8"><?= number_format($targetQty) ?></strong>本
+    <span style="color:#cbd5e1;font-size:.75rem;font-weight:400;letter-spacing:0;text-transform:none">
+      完成 <strong class="neon-g"><?= number_format($completedQty) ?></strong>本 ／ 目標 <strong style="color:#cbd5e1"><?= number_format($targetQty) ?></strong>本
       <?php if ($wipQty > 0): ?>&nbsp;＋仕掛 <strong style="color:#38bdf8"><?= number_format($wipQty) ?></strong>本<?php endif; ?>
       &nbsp;<strong class="<?= $achieveRate >= 80 ? 'neon-g' : ($achieveRate >= 50 ? 'neon-a' : 'neon-r') ?>"><?= $achieveRate ?>%</strong>
     </span>
@@ -996,7 +996,7 @@ require __DIR__ . '/parts/header.php';
               <canvas id="achieveGaugeChart" height="90"></canvas>
               <div class="gauge-overlay">
                 <div class="gauge-pct <?= $achieveRate >= 80 ? 'neon-g' : ($achieveRate >= 50 ? 'neon-a' : 'neon-r') ?>"><?= $achieveRate ?>%</div>
-                <div class="gauge-qty" style="color:#64748b"><?= number_format($completedQty) ?><span style="font-size:.85em;opacity:.75"> / <?= number_format($targetQty) ?>本</span></div>
+                <div class="gauge-qty" style="color:#cbd5e1"><?= number_format($completedQty) ?><span style="font-size:.85em;opacity:.75"> / <?= number_format($targetQty) ?>本</span></div>
                 <div class="gauge-lbl">月間達成率</div>
               </div>
             </div>
@@ -1030,10 +1030,10 @@ require __DIR__ . '/parts/header.php';
               <div>
                 <span class="badge me-1" style="background:<?= $isCrit ? '#ef4444' : '#d97706' ?>;font-size:.62rem"><?= $isCrit ? '緊急' : '遅延' ?></span>
                 <strong style="color:#e2e8f0"><?= h($d['order_no']) ?></strong>
-                <span style="color:#4b5563"> — <?= h($d['process_name']) ?></span><br>
-                <span style="color:#374151;font-size:.77rem"><?= h($d['customer_name'] ?? $d['chair_type_name']) ?></span>
+                <span style="color:#cbd5e1"> — <?= h($d['process_name']) ?></span><br>
+                <span style="color:#94a3b8;font-size:.77rem"><?= h($d['customer_name'] ?? $d['chair_type_name']) ?></span>
                 <?php if ($d['due_date']): ?>
-                  <span class="ms-2" style="font-size:.74rem;color:<?= strtotime($d['due_date']) < time() ? '#f87171' : '#475569' ?>">納期:<?= formatDate($d['due_date']) ?></span>
+                  <span class="ms-2" style="font-size:.74rem;color:<?= strtotime($d['due_date']) < time() ? '#f87171' : '#94a3b8' ?>">納期:<?= formatDate($d['due_date']) ?></span>
                 <?php endif; ?>
               </div>
               <span class="badge ms-1 text-nowrap" style="background:<?= $isCrit ? '#ef4444' : '#d97706' ?>;font-size:.65rem">+<?= formatMinutes((int)$d['delay_minutes']) ?></span>
@@ -1051,7 +1051,7 @@ require __DIR__ . '/parts/header.php';
         </span>
       </div>
       <?php if (empty($upcomingDue)): ?>
-        <div class="ex-card-bd text-center" style="color:#475569;font-size:.82rem;padding:.75rem"><i class="bi bi-calendar-check"></i> 7日以内に納期はありません</div>
+        <div class="ex-card-bd text-center" style="color:#94a3b8;font-size:.82rem;padding:.75rem"><i class="bi bi-calendar-check"></i> 7日以内に納期はありません</div>
       <?php else: ?>
         <?php foreach ($upcomingDue as $u):
           $daysLeft = (int)$u['days_left'];
@@ -1064,9 +1064,9 @@ require __DIR__ . '/parts/header.php';
                   <?= $daysLeft <= 0 ? '超過' : ($daysLeft === 0 ? '本日' : $daysLeft.'日後') ?>
                 </span>
                 <strong style="color:#e2e8f0"><?= h($u['order_no']) ?></strong>
-                <span style="color:#4b5563;font-size:.8rem"> <?= h($u['quantity']) ?>本</span><br>
-                <span style="color:#374151;font-size:.77rem"><?= h($u['customer_name'] ?: $u['chair_type_name']) ?></span>
-                <?php if ($u['project_name']): ?><span style="color:#374151;font-size:.77rem"> / <?= h($u['project_name']) ?></span><?php endif; ?>
+                <span style="color:#cbd5e1;font-size:.8rem"> <?= h($u['quantity']) ?>本</span><br>
+                <span style="color:#94a3b8;font-size:.77rem"><?= h($u['customer_name'] ?: $u['chair_type_name']) ?></span>
+                <?php if ($u['project_name']): ?><span style="color:#94a3b8;font-size:.77rem"> / <?= h($u['project_name']) ?></span><?php endif; ?>
               </div>
               <?= orderStatusBadge($u['status']) ?>
             </div>
@@ -1086,7 +1086,7 @@ require __DIR__ . '/parts/header.php';
     <div class="ex-card">
       <div class="ex-card-hd">
         <span><i class="bi bi-people-fill me-1" style="color:#38bdf8"></i>部門別稼働状況</span>
-        <span style="color:#334155;font-weight:400;text-transform:none;letter-spacing:0">
+        <span style="color:#cbd5e1;font-weight:400;text-transform:none;letter-spacing:0">
           稼働 <strong style="color:#4ade80"><?= $activeWorkers ?></strong>名 / 在籍 <?= $totalEmployees ?>名
         </span>
       </div>
@@ -1115,7 +1115,7 @@ require __DIR__ . '/parts/header.php';
                     <div class="ex-dept-stat-lbl">稼働中</div>
                   </div>
                   <div class="col-4" style="border-left:1px solid rgba(255,255,255,.06);border-right:1px solid rgba(255,255,255,.06)">
-                    <div class="ex-dept-stat-val" style="color:#94a3b8"><?= $ds['emp_cnt'] ?></div>
+                    <div class="ex-dept-stat-val" style="color:#e2e8f0"><?= $ds['emp_cnt'] ?></div>
                     <div class="ex-dept-stat-lbl">在籍</div>
                   </div>
                   <div class="col-4">
@@ -1128,7 +1128,7 @@ require __DIR__ . '/parts/header.php';
           </div>
         <?php endforeach; ?>
         <?php if (empty($deptStatus)): ?>
-          <div class="col-12 text-center py-2" style="color:#374151;font-size:.85rem">データなし</div>
+          <div class="col-12 text-center py-2" style="color:#94a3b8;font-size:.85rem">データなし</div>
         <?php endif; ?>
         </div>
       </div>
@@ -1139,7 +1139,7 @@ require __DIR__ . '/parts/header.php';
   <div class="col-md-4">
     <div class="ex-card h-100">
       <div class="ex-card-hd">
-        <span><i class="bi bi-currency-yen me-1" style="color:#fbbf24"></i>コスト管理 <span style="color:#334155;font-weight:400;text-transform:none;letter-spacing:0"><?= h($costMonth) ?></span></span>
+        <span><i class="bi bi-currency-yen me-1" style="color:#fbbf24"></i>コスト管理 <span style="color:#cbd5e1;font-weight:400;text-transform:none;letter-spacing:0"><?= h($costMonth) ?></span></span>
         <a href="admin_settings.php#cost" style="color:#38bdf8;text-decoration:none;font-size:.72rem;font-weight:400;text-transform:none;letter-spacing:0"><i class="bi bi-pencil"></i></a>
       </div>
       <div class="ex-card-bd">
@@ -1157,10 +1157,10 @@ require __DIR__ . '/parts/header.php';
             <div class="ex-cost-lbl">管理費/本</div>
           </div>
         </div>
-        <div style="font-size:.7rem;color:#374151;display:flex;justify-content:space-between;flex-wrap:wrap;gap:.2rem;margin-top:.5rem;padding-top:.5rem;border-top:1px solid rgba(255,255,255,.05)">
-          <span>給与総額 <strong style="color:#64748b">¥<?= number_format($salaryTotal) ?></strong></span>
-          <span>管理費 <strong style="color:#64748b">¥<?= number_format($overheadCost) ?></strong></span>
-          <span>1人あたり <strong style="color:#64748b"><?= $perPersonQty ?>本</strong></span>
+        <div style="font-size:.7rem;color:#94a3b8;display:flex;justify-content:space-between;flex-wrap:wrap;gap:.2rem;margin-top:.5rem;padding-top:.5rem;border-top:1px solid rgba(255,255,255,.08)">
+          <span>給与総額 <strong style="color:#e2e8f0">¥<?= number_format($salaryTotal) ?></strong></span>
+          <span>管理費 <strong style="color:#e2e8f0">¥<?= number_format($overheadCost) ?></strong></span>
+          <span>1人あたり <strong style="color:#e2e8f0"><?= $perPersonQty ?>本</strong></span>
         </div>
       </div>
     </div>
@@ -1179,13 +1179,13 @@ require __DIR__ . '/parts/header.php';
       <div class="btn-group btn-group-sm">
         <?php foreach (['tomorrow'=>'明日','week'=>'今週','month'=>'今月'] as $k=>$l): ?>
         <a href="?gantt_period=<?= $k ?>" class="btn btn-sm"
-           style="<?= $ganttPeriod === $k ? 'background:#1d4ed8;border-color:#3b82f6;color:#fff' : 'background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:#64748b' ?>">
+           style="<?= $ganttPeriod === $k ? 'background:#1d4ed8;border-color:#3b82f6;color:#fff' : 'background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:#cbd5e1' ?>">
           <?= $l ?>
         </a>
         <?php endforeach; ?>
       </div>
       <a href="gantt.php?date_from=<?= $ganttFrom ?>&date_to=<?= $ganttTo ?>"
-         class="btn btn-sm" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#64748b">
+         class="btn btn-sm" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#cbd5e1">
         <i class="bi bi-arrows-fullscreen"></i>
       </a>
     </div>
@@ -1479,7 +1479,7 @@ require __DIR__ . '/parts/header.php';
     </div>
     <div class="card-body p-0" style="background:#0f172a">
       <?php if (empty($activeProcesses)): ?>
-        <div class="text-center py-4" style="color:#64748b">
+        <div class="text-center py-4" style="color:#94a3b8">
           <i class="bi bi-moon-stars fs-3"></i><br>
           <small>現在作業中の工員はいません</small>
         </div>
@@ -1543,7 +1543,7 @@ require __DIR__ . '/parts/header.php';
       <?php if (empty($delayedList)): ?>
         <div class="text-center py-4" style="color:#22c55e">
           <i class="bi bi-check-circle-fill fs-3"></i><br>
-          <small style="color:#64748b">遅延なし — 全工程正常</small>
+          <small style="color:#94a3b8">遅延なし — 全工程正常</small>
         </div>
       <?php else: ?>
         <?php foreach ($delayedList as $d):
@@ -1557,8 +1557,8 @@ require __DIR__ . '/parts/header.php';
                   <?= $isCrit ? '緊急' : '遅延' ?>
                 </span>
                 <strong style="color:#e2e8f0;font-size:.88rem"><?= h($d['order_no']) ?></strong>
-                <span style="color:#94a3b8;font-size:.8rem"> — <?= h($d['process_name']) ?></span><br>
-                <small style="color:#64748b"><?= h($d['customer_name'] ?? $d['chair_type_name']) ?>
+                <span style="color:#67e8f9;font-size:.8rem"> — <?= h($d['process_name']) ?></span><br>
+                <small style="color:#94a3b8"><?= h($d['customer_name'] ?? $d['chair_type_name']) ?>
                   <?php if ($d['due_date']): ?>
                     &nbsp;|&nbsp; 納期: <span class="<?= strtotime($d['due_date']) < time() ? 'text-danger' : '' ?>"><?= formatDate($d['due_date']) ?></span>
                   <?php endif; ?>
@@ -1595,7 +1595,7 @@ require __DIR__ . '/parts/header.php';
   ?>
   <?php if (!empty($deptDelayData)): ?>
   <div class="card mt-2" style="border:none;box-shadow:var(--shadow)">
-    <div class="card-header py-2 fw-bold small" style="background:#1e293b;color:#94a3b8;border:none">
+    <div class="card-header py-2 fw-bold small" style="background:#1e293b;color:#67e8f9;border:none">
       <i class="bi bi-building"></i> 部門別 遅延状況
     </div>
     <div class="card-body p-0" style="background:#0f172a">
