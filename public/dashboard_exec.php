@@ -732,6 +732,25 @@ require __DIR__ . '/parts/header.php';
 .gauge-pct  { font-size:clamp(1.3rem,3.5vw,1.8rem); font-weight:900; line-height:1; letter-spacing:-.04em; }
 .gauge-qty  { font-size:.75rem; color:#cbd5e1; margin-top:.1rem; }
 .gauge-lbl  { font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:#94a3b8; margin-top:.1rem; }
+/* ── セクション設定パネル ── */
+.exec-section.sec-hidden { display: none !important; }
+#exSec-kpi      { --sec-clr: #67e8f9; }
+#exSec-progress { --sec-clr: #38bdf8; }
+#exSec-budget   { --sec-clr: #2dd4bf; }
+#exChart-daily  { --sec-clr: #38bdf8; }
+#exChart-monthly{ --sec-clr: #2dd4bf; }
+#exChart-budget { --sec-clr: #fbbf24; }
+#exChart-process{ --sec-clr: #f87171; }
+#exSec-alerts   { --sec-clr: #f87171; }
+#exSec-upcoming { --sec-clr: #fbbf24; }
+#exSec-dept     { --sec-clr: #38bdf8; }
+#exSec-cost     { --sec-clr: #fbbf24; }
+#exSec-gantt    { --sec-clr: #38bdf8; }
+#exSec-kpi .kpi-label, #exSec-budget .kpi-label { color: var(--sec-clr); }
+.exec-section .sec-icon { color: var(--sec-clr) !important; }
+/* 設定パネル offcanvas */
+#dashSettingsPanel .sp-bg-swatch:hover { transform:scale(1.2); }
+#dashSettingsPanel .sp-bg-swatch.active { outline:2px solid #67e8f9; outline-offset:2px; }
 </style>
 
 <!-- ===== タブナビゲーション ===== -->
@@ -767,6 +786,116 @@ require __DIR__ . '/parts/header.php';
 
 <div class="tab-content" id="dashTabContent">
 <div class="tab-pane fade show active" id="execTabPane" role="tabpanel">
+
+<?php if (isPresidentOrAdmin()): ?>
+<!-- ═══ ダッシュボード設定パネル ═══ -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="dashSettingsPanel"
+     style="width:340px;max-width:96vw;background:#0f172a;color:#e2e8f0;border-left:1px solid rgba(255,255,255,.15)">
+  <div class="offcanvas-header py-3" style="background:#1e293b;border-bottom:1px solid rgba(255,255,255,.1)">
+    <h5 class="offcanvas-title fw-bold mb-0" style="font-size:1rem">
+      <i class="bi bi-palette-fill me-2" style="color:#67e8f9"></i>ダッシュボード設定
+    </h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body px-3 py-2" style="overflow-y:auto">
+
+    <!-- タブ選択 -->
+    <ul class="nav nav-pills nav-fill gap-1 my-2" id="spTabPills">
+      <li class="nav-item">
+        <button class="nav-link active py-1 fw-bold" data-bs-toggle="pill"
+                data-bs-target="#spView" style="font-size:.8rem;color:#e2e8f0">
+          <i class="bi bi-eye"></i> 表示設定
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link py-1 fw-bold" data-bs-toggle="pill"
+                data-bs-target="#spColor" style="font-size:.8rem;color:#e2e8f0">
+          <i class="bi bi-palette"></i> カラー設定
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content">
+
+      <!-- ── 表示設定タブ ── -->
+      <div class="tab-pane fade show active" id="spView">
+
+        <div class="small fw-bold mt-2 mb-1" style="color:#67e8f9;letter-spacing:.08em;text-transform:uppercase">
+          セクション表示 / 非表示
+        </div>
+        <div id="spSectionToggles">
+          <!-- JS で生成 -->
+        </div>
+        <div class="d-flex gap-2 mt-2 mb-4">
+          <button class="btn btn-sm flex-fill" onclick="spShowAll()"
+                  style="background:rgba(103,232,249,.1);border:1px solid rgba(103,232,249,.3);color:#67e8f9;font-size:.8rem">
+            <i class="bi bi-eye"></i> 全表示
+          </button>
+          <button class="btn btn-sm flex-fill" onclick="spHideAll()"
+                  style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#94a3b8;font-size:.8rem">
+            <i class="bi bi-eye-slash"></i> 全非表示
+          </button>
+        </div>
+
+        <!-- 全体背景色 -->
+        <div class="small fw-bold mb-2" style="color:#67e8f9;letter-spacing:.08em;text-transform:uppercase">
+          全体背景カラー
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+          <?php foreach([
+            '#070d1a'=>'ほぼ黒',
+            '#0f172a'=>'ダーク',
+            '#1e293b'=>'スレートグレー',
+            '#1f2937'=>'グレー',
+            '#0d1b2a'=>'ネイビー',
+            '#0d2419'=>'フォレスト',
+          ] as $hex=>$name): ?>
+          <div class="sp-bg-swatch" data-color="<?= $hex ?>" title="<?= $name ?>"
+               style="width:26px;height:26px;border-radius:50%;background:<?= $hex ?>;
+                      border:2px solid rgba(255,255,255,.2);cursor:pointer;
+                      transition:transform .15s,outline .1s;flex-shrink:0"></div>
+          <?php endforeach; ?>
+          <label title="カスタム背景色" style="cursor:pointer;line-height:1" id="spBgCustomLabel">
+            <i class="bi bi-plus-circle" style="color:#94a3b8;font-size:1.1rem"></i>
+            <input type="color" id="spBgCustom" value="#1e293b"
+                   style="position:absolute;width:0;height:0;opacity:0;pointer-events:none">
+          </label>
+        </div>
+
+      </div><!-- /spView -->
+
+      <!-- ── カラー設定タブ ── -->
+      <div class="tab-pane fade" id="spColor">
+
+        <div class="small fw-bold mt-2 mb-2" style="color:#67e8f9;letter-spacing:.08em;text-transform:uppercase">
+          セクション別アクセントカラー
+        </div>
+        <div id="spColorRows">
+          <!-- JS で生成 -->
+        </div>
+        <button class="btn btn-sm w-100 mt-2"
+                style="background:rgba(255,100,100,.08);border:1px solid rgba(255,100,100,.25);color:#fca5a5;font-size:.8rem"
+                onclick="spResetColors()">
+          <i class="bi bi-arrow-counterclockwise"></i> カラーをリセット
+        </button>
+
+      </div><!-- /spColor -->
+
+    </div><!-- /tab-content -->
+
+    <!-- 全設定リセット -->
+    <div class="mt-4 pt-3" style="border-top:1px solid rgba(255,255,255,.08)">
+      <button class="btn btn-sm w-100"
+              style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#f87171;font-size:.8rem"
+              onclick="spResetAll()">
+        <i class="bi bi-arrow-counterclockwise"></i> 全設定をリセット
+      </button>
+    </div>
+
+  </div><!-- /offcanvas-body -->
+</div><!-- /dashSettingsPanel -->
+<?php endif; ?>
+
 <div class="exec-dark">
 
 <?php if ($word): ?>
@@ -792,8 +921,15 @@ require __DIR__ . '/parts/header.php';
   </div>
   <div class="ms-auto d-flex gap-1">
     <?php if (isPresidentOrAdmin()): ?>
-    <a href="admin_settings.php#cost" class="btn btn-sm" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#e2e8f0">
-      <i class="bi bi-gear"></i><span class="d-none d-md-inline"> 設定</span>
+    <button class="btn btn-sm" data-bs-toggle="offcanvas" data-bs-target="#dashSettingsPanel"
+            style="background:rgba(103,232,249,.12);border:1px solid rgba(103,232,249,.35);color:#67e8f9"
+            title="ダッシュボード設定">
+      <i class="bi bi-palette-fill"></i><span class="d-none d-md-inline"> 編集</span>
+    </button>
+    <a href="admin_settings.php#cost" class="btn btn-sm"
+       style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#e2e8f0"
+       title="システム設定">
+      <i class="bi bi-gear"></i>
     </a>
     <?php endif; ?>
     <button class="btn btn-sm" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#e2e8f0" onclick="location.reload()">
@@ -803,7 +939,7 @@ require __DIR__ . '/parts/header.php';
 </div>
 
 <!-- ═══════ KPI カード 6枚 ═══════ -->
-<div class="row g-2 mb-3">
+<div id="exSec-kpi" class="exec-section row g-2 mb-3">
   <div class="col-6 col-md-2">
     <div class="ex-kpi">
       <i class="bi bi-hourglass-split kpi-bg-icon"></i>
@@ -864,9 +1000,9 @@ require __DIR__ . '/parts/header.php';
 
 <!-- ═══════ 月間生産進捗バー ═══════ -->
 <?php $completePct = $targetQty > 0 ? min(100, $completedQty / $targetQty * 100) : 0; ?>
-<div class="ex-card mb-3">
+<div id="exSec-progress" class="exec-section ex-card mb-3">
   <div class="ex-card-hd">
-    <span><i class="bi bi-bar-chart-fill me-1" style="color:#38bdf8"></i>月間生産進捗 <span style="color:#38bdf8"><?= date('n月') ?></span></span>
+    <span><i class="bi bi-bar-chart-fill sec-icon me-1"></i>月間生産進捗 <span style="color:#38bdf8"><?= date('n月') ?></span></span>
     <span style="color:#cbd5e1;font-size:.75rem;font-weight:400;letter-spacing:0;text-transform:none">
       完成 <strong class="neon-g"><?= number_format($completedQty) ?></strong>本 ／ 目標 <strong style="color:#cbd5e1"><?= number_format($targetQty) ?></strong>本
       <?php if ($wipQty > 0): ?>&nbsp;＋仕掛 <strong style="color:#38bdf8"><?= number_format($wipQty) ?></strong>本<?php endif; ?>
@@ -884,6 +1020,7 @@ require __DIR__ . '/parts/header.php';
 </div>
 
 <?php if ($currentBudget): ?>
+<div id="exSec-budget" class="exec-section">
 <!-- ═══════ 予算対比 ═══════ -->
 <?php
   $budgetAch = $currentBudget['target_qty'] > 0 ? round($currentBudget['actual_qty'] / $currentBudget['target_qty'] * 100, 1) : null;
@@ -931,6 +1068,7 @@ require __DIR__ . '/parts/header.php';
     </div>
   </div>
 </div>
+</div><!-- /exSec-budget -->
 <?php endif; ?>
 
 <!-- ═══════ 生産分析 ═══════ -->
@@ -942,11 +1080,11 @@ require __DIR__ . '/parts/header.php';
     <div class="row g-3">
 
     <?php if ($showWidget('daily_chart')): ?>
-    <div class="col-md-6">
+    <div id="exChart-daily" class="exec-section col-md-6">
       <div class="ex-card h-100">
         <div class="ex-card-hd">
-          <span><i class="bi bi-bar-chart me-1" style="color:#38bdf8"></i>日別生産（<?= date('n月') ?>）</span>
-          <span style="color:#38bdf8;font-weight:400;text-transform:none;letter-spacing:0"><?= $completedQty ?>本</span>
+          <span><i class="bi bi-bar-chart sec-icon me-1"></i>日別生産（<?= date('n月') ?>）</span>
+          <span style="color:var(--sec-clr,#38bdf8);font-weight:400;text-transform:none;letter-spacing:0"><?= $completedQty ?>本</span>
         </div>
         <div class="ex-card-bd">
           <canvas id="dailyChart" height="110"></canvas>
@@ -959,27 +1097,27 @@ require __DIR__ . '/parts/header.php';
     <?php endif; ?>
 
     <?php if ($showWidget('monthly_chart')): ?>
-    <div class="col-md-6">
+    <div id="exChart-monthly" class="exec-section col-md-6">
       <div class="ex-card h-100">
-        <div class="ex-card-hd"><i class="bi bi-graph-up-arrow me-1" style="color:#2dd4bf"></i>月別推移（過去6ヶ月）</div>
+        <div class="ex-card-hd"><i class="bi bi-graph-up-arrow sec-icon me-1"></i>月別推移（過去6ヶ月）</div>
         <div class="ex-card-bd"><canvas id="monthlyChart" height="110"></canvas></div>
       </div>
     </div>
     <?php endif; ?>
 
     <?php if ($showWidget('budget_chart') && !empty($budgetComparison)): ?>
-    <div class="col-md-6">
+    <div id="exChart-budget" class="exec-section col-md-6">
       <div class="ex-card h-100">
-        <div class="ex-card-hd"><i class="bi bi-bar-chart-line me-1" style="color:#fbbf24"></i>予算対比（本数）</div>
+        <div class="ex-card-hd"><i class="bi bi-bar-chart-line sec-icon me-1"></i>予算対比（本数）</div>
         <div class="ex-card-bd"><canvas id="budgetChart" height="110"></canvas></div>
       </div>
     </div>
     <?php endif; ?>
 
-    <div class="col-md-6">
+    <div id="exChart-process" class="exec-section col-md-6">
       <div class="ex-card h-100">
         <div class="ex-card-hd">
-          <span><i class="bi bi-pie-chart me-1" style="color:#f87171"></i>工程状況 / 達成率</span>
+          <span><i class="bi bi-pie-chart sec-icon me-1"></i>工程状況 / 達成率</span>
         </div>
         <div class="ex-card-bd">
           <div class="d-flex align-items-center gap-2">
@@ -1012,9 +1150,9 @@ require __DIR__ . '/parts/header.php';
   <div class="col-lg-4">
 
     <!-- 遅延アラート -->
-    <div class="ex-card mb-3">
+    <div id="exSec-alerts" class="exec-section ex-card mb-3">
       <div class="ex-card-hd">
-        <span><i class="bi bi-exclamation-octagon-fill me-1" style="color:#f87171"></i>遅延アラート
+        <span><i class="bi bi-exclamation-octagon-fill sec-icon me-1"></i>遅延アラート
           <?php if ($delayedCount > 0): ?><span class="badge ms-1" style="background:#ef4444"><?= $delayedCount ?></span><?php endif; ?>
         </span>
         <?php if ($delayedCount > 8): ?>
@@ -1044,9 +1182,9 @@ require __DIR__ . '/parts/header.php';
     </div>
 
     <!-- 納期7日以内 -->
-    <div class="ex-card">
+    <div id="exSec-upcoming" class="exec-section ex-card">
       <div class="ex-card-hd">
-        <span><i class="bi bi-calendar-event-fill me-1" style="color:#fbbf24"></i>納期まで7日以内
+        <span><i class="bi bi-calendar-event-fill sec-icon me-1"></i>納期まで7日以内
           <?php if (!empty($upcomingDue)): ?><span class="badge ms-1" style="background:rgba(251,191,36,.25);color:#fbbf24"><?= count($upcomingDue) ?></span><?php endif; ?>
         </span>
       </div>
@@ -1082,10 +1220,10 @@ require __DIR__ . '/parts/header.php';
 <div class="ex-sec mt-2"><span>部門稼働状況 — 本日</span></div>
 <div class="row g-3">
 
-  <div class="col-md-<?= (isPresidentOrAdmin() && ($salaryTotal > 0 || $overheadCost > 0)) ? '8' : '12' ?>">
+  <div id="exSec-dept" class="exec-section col-md-<?= (isPresidentOrAdmin() && ($salaryTotal > 0 || $overheadCost > 0)) ? '8' : '12' ?>">
     <div class="ex-card">
       <div class="ex-card-hd">
-        <span><i class="bi bi-people-fill me-1" style="color:#38bdf8"></i>部門別稼働状況</span>
+        <span><i class="bi bi-people-fill sec-icon me-1"></i>部門別稼働状況</span>
         <span style="color:#cbd5e1;font-weight:400;text-transform:none;letter-spacing:0">
           稼働 <strong style="color:#4ade80"><?= $activeWorkers ?></strong>名 / 在籍 <?= $totalEmployees ?>名
         </span>
@@ -1136,10 +1274,10 @@ require __DIR__ . '/parts/header.php';
   </div>
 
   <?php if (isPresidentOrAdmin() && ($salaryTotal > 0 || $overheadCost > 0)): ?>
-  <div class="col-md-4">
+  <div id="exSec-cost" class="exec-section col-md-4">
     <div class="ex-card h-100">
       <div class="ex-card-hd">
-        <span><i class="bi bi-currency-yen me-1" style="color:#fbbf24"></i>コスト管理 <span style="color:#cbd5e1;font-weight:400;text-transform:none;letter-spacing:0"><?= h($costMonth) ?></span></span>
+        <span><i class="bi bi-currency-yen sec-icon me-1"></i>コスト管理 <span style="color:#cbd5e1;font-weight:400;text-transform:none;letter-spacing:0"><?= h($costMonth) ?></span></span>
         <a href="admin_settings.php#cost" style="color:#38bdf8;text-decoration:none;font-size:.72rem;font-weight:400;text-transform:none;letter-spacing:0"><i class="bi bi-pencil"></i></a>
       </div>
       <div class="ex-card-bd">
@@ -1171,10 +1309,11 @@ require __DIR__ . '/parts/header.php';
 
 <!-- ═══════ ガントチャート ═══════ -->
 <?php if ($showWidget('gantt')): ?>
+<div id="exSec-gantt" class="exec-section">
 <div class="ex-sec mt-2"><span>製造スケジュール</span></div>
 <div class="ex-card">
   <div class="ex-card-hd">
-    <span><i class="bi bi-bar-chart-steps me-1" style="color:#38bdf8"></i>製造スケジュール</span>
+    <span><i class="bi bi-bar-chart-steps sec-icon me-1"></i>製造スケジュール</span>
     <div class="d-flex gap-1 align-items-center">
       <div class="btn-group btn-group-sm">
         <?php foreach (['tomorrow'=>'明日','week'=>'今週','month'=>'今月'] as $k=>$l): ?>
@@ -1193,6 +1332,7 @@ require __DIR__ . '/parts/header.php';
   <iframe src="gantt.php?date_from=<?= $ganttFrom ?>&date_to=<?= $ganttTo ?>&embed=1"
           class="w-100 border-0" style="height:280px" title="ガントチャート"></iframe>
 </div>
+</div><!-- /exSec-gantt -->
 <?php endif; ?>
 
 </div><!-- /exec-dark -->
@@ -1830,7 +1970,7 @@ function toggleWord(id, btn){
         options:{
             responsive:true,
             plugins:{
-                legend:{position:'bottom',labels:{color:'#374151',font:{size:10},boxWidth:10}},
+                legend:{position:'bottom',labels:{color:'#94a3b8',font:{size:10},boxWidth:10}},
                 tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y+'本'}}
             },
             scales:{
@@ -1882,6 +2022,253 @@ function toggleWord(id, btn){
             else stopAuto();
         });
     });
+})();
+
+// ─────────────────────────────────────────────
+// ダッシュボード設定パネル
+// ─────────────────────────────────────────────
+(function(){
+    if(!document.getElementById('dashSettingsPanel')) return;
+
+    const STORE_KEY = 'execDash_v2';
+    const PALETTE   = [
+        '#67e8f9','#38bdf8','#818cf8','#a78bfa','#f472b6',
+        '#f87171','#fb923c','#fbbf24','#a3e635','#4ade80','#2dd4bf','#ffffff'
+    ];
+
+    // 設定可能なセクション一覧（DOMに存在するものだけ使用）
+    const SECTION_DEFS = [
+        {id:'exSec-kpi',       label:'KPI カード',       icon:'bi-grid-1x2-fill', defColor:'#67e8f9'},
+        {id:'exSec-progress',  label:'月間生産進捗',      icon:'bi-bar-chart-fill',defColor:'#38bdf8'},
+        {id:'exSec-budget',    label:'予算対比',          icon:'bi-bullseye',      defColor:'#2dd4bf'},
+        {id:'exChart-daily',   label:'日別生産チャート',  icon:'bi-bar-chart',     defColor:'#38bdf8'},
+        {id:'exChart-monthly', label:'月別推移チャート',  icon:'bi-graph-up-arrow',defColor:'#2dd4bf'},
+        {id:'exChart-budget',  label:'予算対比チャート',  icon:'bi-bar-chart-line',defColor:'#fbbf24'},
+        {id:'exChart-process', label:'工程状況/達成率',   icon:'bi-pie-chart',     defColor:'#f87171'},
+        {id:'exSec-alerts',    label:'遅延アラート',      icon:'bi-exclamation-octagon-fill',defColor:'#f87171'},
+        {id:'exSec-upcoming',  label:'直近納期 7日',      icon:'bi-calendar-event-fill',defColor:'#fbbf24'},
+        {id:'exSec-dept',      label:'部門別稼働状況',    icon:'bi-people-fill',   defColor:'#38bdf8'},
+        {id:'exSec-cost',      label:'コスト管理',        icon:'bi-currency-yen',  defColor:'#fbbf24'},
+        {id:'exSec-gantt',     label:'製造スケジュール',  icon:'bi-bar-chart-steps',defColor:'#38bdf8'},
+    ].filter(function(s){ return !!document.getElementById(s.id); });
+
+    function loadStore(){
+        try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
+        catch(e){ return {}; }
+    }
+    function saveStore(data){ localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+
+    function applyBg(color){
+        const el = document.querySelector('.exec-dark');
+        if(!el) return;
+        el.style.background = color;
+        el.style.backgroundImage =
+            'radial-gradient(ellipse 55% 40% at 8% 8%, rgba(0,180,255,.12) 0%, transparent 65%),' +
+            'radial-gradient(ellipse 45% 45% at 92% 90%, rgba(120,0,255,.08) 0%, transparent 60%)';
+        const tabs = document.getElementById('dashTabs');
+        if(tabs) tabs.style.setProperty('background', color, 'important');
+        // スウォッチのアクティブ状態更新
+        document.querySelectorAll('.sp-bg-swatch').forEach(function(sw){
+            sw.style.outline     = sw.dataset.color === color ? '2px solid #67e8f9' : '';
+            sw.style.outlineOffset = '2px';
+            sw.style.transform   = sw.dataset.color === color ? 'scale(1.15)' : '';
+        });
+        const picker = document.getElementById('spBgCustom');
+        if(picker) picker.value = color;
+    }
+
+    function applyColor(secId, color){
+        const el = document.getElementById(secId);
+        if(el) el.style.setProperty('--sec-clr', color);
+    }
+
+    function applyVisible(secId, visible){
+        const el = document.getElementById(secId);
+        if(el) el.classList.toggle('sec-hidden', !visible);
+    }
+
+    function applyAll(store){
+        if(store.bg) applyBg(store.bg);
+        const secs = store.sections || {};
+        SECTION_DEFS.forEach(function(s){
+            const cfg = secs[s.id] || {};
+            if(cfg.color)          applyColor(s.id, cfg.color);
+            if(cfg.visible === false) applyVisible(s.id, false);
+        });
+    }
+
+    // ── 表示設定タブ: トグルリスト生成 ──
+    function buildVisibility(store){
+        const container = document.getElementById('spSectionToggles');
+        if(!container) return;
+        const secs = store.sections || {};
+        container.innerHTML = SECTION_DEFS.map(function(s){
+            const vis  = (secs[s.id] || {}).visible !== false;
+            const clr  = (secs[s.id] || {}).color || s.defColor;
+            return '<div class="d-flex align-items-center gap-2 py-2"' +
+                   ' style="border-bottom:1px solid rgba(255,255,255,.06)">' +
+                   '<div class="form-check form-switch mb-0">' +
+                   '<input class="form-check-input" type="checkbox" role="switch"' +
+                   ' id="spV-' + s.id + '"' +
+                   (vis ? ' checked' : '') +
+                   ' onchange="spToggleVis(\'' + s.id + '\',this.checked)"' +
+                   ' style="cursor:pointer"></div>' +
+                   '<i class="bi ' + s.icon + '" style="color:' + clr + ';font-size:.9rem;width:18px;text-align:center;flex-shrink:0"></i>' +
+                   '<label for="spV-' + s.id + '" class="mb-0"' +
+                   ' style="font-size:.82rem;cursor:pointer;flex:1;color:' + (vis ? '#e2e8f0' : '#64748b') + '">' +
+                   s.label + '</label></div>';
+        }).join('');
+    }
+
+    // ── カラー設定タブ: カラー行生成 ──
+    function buildColorRows(store){
+        const container = document.getElementById('spColorRows');
+        if(!container) return;
+        const secs = store.sections || {};
+        container.innerHTML = SECTION_DEFS.map(function(s){
+            const cur = (secs[s.id] || {}).color || s.defColor;
+            const swatchHtml = PALETTE.map(function(c){
+                return '<div style="width:20px;height:20px;border-radius:50%;background:' + c + ';' +
+                       'cursor:pointer;flex-shrink:0;' +
+                       'border:2px solid ' + (c===cur ? '#fff' : 'transparent') + ';' +
+                       'transition:border-color .12s,transform .1s"' +
+                       ' title="' + c + '"' +
+                       ' onmouseenter="this.style.transform=\'scale(1.25)\'"' +
+                       ' onmouseleave="this.style.transform=\'\'"' +
+                       ' onclick="spPickColor(\'' + s.id + '\',\'' + c + '\')"></div>';
+            }).join('');
+            return '<div class="mb-3">' +
+                   '<div class="d-flex align-items-center gap-1 mb-1">' +
+                   '<i class="bi ' + s.icon + '" id="spCI-' + s.id + '"' +
+                   ' style="color:' + cur + ';font-size:.85rem;width:16px;text-align:center"></i>' +
+                   '<span style="font-size:.8rem;color:#cbd5e1">' + s.label + '</span>' +
+                   '</div>' +
+                   '<div class="d-flex flex-wrap gap-1 align-items-center">' +
+                   swatchHtml +
+                   '<label title="カスタム" style="cursor:pointer;position:relative;margin-left:2px">' +
+                   '<i class="bi bi-plus-circle" style="color:#94a3b8;font-size:1rem"></i>' +
+                   '<input type="color" value="' + cur + '" id="spCC-' + s.id + '"' +
+                   ' style="position:absolute;width:0;height:0;opacity:0;pointer-events:none"' +
+                   ' oninput="spPickColor(\'' + s.id + '\',this.value)"' +
+                   ' onchange="spPickColor(\'' + s.id + '\',this.value)">' +
+                   '</label></div></div>';
+        }).join('');
+    }
+
+    // ── グローバル関数 ──
+    window.spToggleVis = function(secId, vis){
+        const store = loadStore();
+        store.sections = store.sections || {};
+        store.sections[secId] = store.sections[secId] || {};
+        store.sections[secId].visible = vis;
+        saveStore(store);
+        applyVisible(secId, vis);
+        const lbl = document.querySelector('label[for="spV-' + secId + '"]');
+        if(lbl) lbl.style.color = vis ? '#e2e8f0' : '#64748b';
+    };
+
+    window.spPickColor = function(secId, color){
+        const store = loadStore();
+        store.sections = store.sections || {};
+        store.sections[secId] = store.sections[secId] || {};
+        store.sections[secId].color = color;
+        saveStore(store);
+        applyColor(secId, color);
+        // スウォッチ枠線更新
+        const rows = document.getElementById('spColorRows');
+        if(rows){
+            rows.querySelectorAll('div[onclick*="' + secId + '"]').forEach(function(el){
+                el.style.borderColor = el.title === color ? '#fff' : 'transparent';
+            });
+        }
+        // アイコン色更新
+        const ico = document.getElementById('spCI-' + secId);
+        if(ico) ico.style.color = color;
+        // 表示設定タブのアイコン色も同期
+        const visIco = document.querySelector('#spV-' + secId)?.closest('div')?.querySelector('i.bi');
+        if(visIco) visIco.style.color = color;
+        // カスタムピッカー値更新
+        const cp = document.getElementById('spCC-' + secId);
+        if(cp) cp.value = color;
+    };
+
+    window.spShowAll = function(){
+        const store = loadStore();
+        store.sections = store.sections || {};
+        SECTION_DEFS.forEach(function(s){
+            store.sections[s.id] = store.sections[s.id] || {};
+            store.sections[s.id].visible = true;
+            applyVisible(s.id, true);
+            const chk = document.getElementById('spV-' + s.id);
+            if(chk) chk.checked = true;
+            const lbl = document.querySelector('label[for="spV-' + s.id + '"]');
+            if(lbl) lbl.style.color = '#e2e8f0';
+        });
+        saveStore(store);
+    };
+
+    window.spHideAll = function(){
+        const store = loadStore();
+        store.sections = store.sections || {};
+        SECTION_DEFS.forEach(function(s){
+            store.sections[s.id] = store.sections[s.id] || {};
+            store.sections[s.id].visible = false;
+            applyVisible(s.id, false);
+            const chk = document.getElementById('spV-' + s.id);
+            if(chk) chk.checked = false;
+            const lbl = document.querySelector('label[for="spV-' + s.id + '"]');
+            if(lbl) lbl.style.color = '#64748b';
+        });
+        saveStore(store);
+    };
+
+    window.spResetColors = function(){
+        const store = loadStore();
+        store.sections = store.sections || {};
+        SECTION_DEFS.forEach(function(s){
+            if(store.sections[s.id]) delete store.sections[s.id].color;
+            applyColor(s.id, s.defColor);
+        });
+        saveStore(store);
+        buildColorRows(store);
+        buildVisibility(store);
+    };
+
+    window.spResetAll = function(){
+        if(!confirm('全設定をリセットしますか？背景色・カラー・表示設定がすべてデフォルトに戻ります。')) return;
+        localStorage.removeItem(STORE_KEY);
+        location.reload();
+    };
+
+    // 背景スウォッチ
+    document.querySelectorAll('.sp-bg-swatch').forEach(function(sw){
+        sw.addEventListener('click', function(){
+            const color = this.dataset.color;
+            const store = loadStore();
+            store.bg = color;
+            saveStore(store);
+            applyBg(color);
+        });
+    });
+
+    // カスタム背景ピッカー
+    const bgLabel = document.getElementById('spBgCustomLabel');
+    const bgInput = document.getElementById('spBgCustom');
+    if(bgLabel && bgInput){
+        bgLabel.addEventListener('click', function(){ bgInput.click(); });
+        bgInput.addEventListener('change', function(){
+            const store = loadStore();
+            store.bg = this.value;
+            saveStore(store);
+            applyBg(this.value);
+        });
+    }
+
+    // 初期化
+    const store = loadStore();
+    applyAll(store);
+    buildVisibility(store);
+    buildColorRows(store);
 })();
 JSCODE;
 require __DIR__ . '/parts/footer.php';
