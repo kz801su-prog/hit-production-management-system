@@ -32,9 +32,12 @@ $thumbs  = [];
 if ($typeIds) {
     $phs  = implode(',', array_fill(0, count($typeIds), '?'));
     $imgs = dbFetchAll(
-        "SELECT chair_type_id, file_path FROM chair_type_media
-         WHERE chair_type_id IN ({$phs}) AND media_type IN ('photo','drawing')
-         GROUP BY chair_type_id ORDER BY display_order",
+        "SELECT chair_type_id, file_path FROM (
+            SELECT chair_type_id, file_path,
+                   ROW_NUMBER() OVER (PARTITION BY chair_type_id ORDER BY display_order) AS rn
+            FROM chair_type_media
+            WHERE chair_type_id IN ({$phs}) AND media_type IN ('photo','drawing')
+         ) ranked WHERE rn = 1",
         $typeIds
     );
     foreach ($imgs as $img) {

@@ -36,7 +36,7 @@ if (!$order) {
 
 // 既存評価
 $existing = dbFetchOne(
-    "SELECT e.*, u.username AS evaluator_name
+    "SELECT e.*, u.login_id AS evaluator_name
      FROM order_quality_evaluations e
      JOIN users u ON e.evaluator_user_id = u.id
      WHERE e.manufacturing_order_id = ?",

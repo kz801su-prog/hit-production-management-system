@@ -20,11 +20,11 @@ CREATE TABLE IF NOT EXISTS monthly_budget (
 
 -- 工程標準時間テーブルに責任部署列を追加
 ALTER TABLE chair_type_process_standards
-    ADD COLUMN IF NOT EXISTS dept_id INT NULL COMMENT '責任部署ID' AFTER process_id;
+    ADD COLUMN dept_id INT NULL COMMENT '責任部署ID' AFTER process_id;
 
 -- 作業指示工程テーブルにも責任部署列を追加
 ALTER TABLE manufacturing_order_processes
-    ADD COLUMN IF NOT EXISTS dept_id INT NULL COMMENT '責任部署ID' AFTER process_id;
+    ADD COLUMN dept_id INT NULL COMMENT '責任部署ID' AFTER process_id;
 
 -- ダッシュボード表示設定キーを追加
 INSERT IGNORE INTO system_settings (setting_key, setting_value, description) VALUES

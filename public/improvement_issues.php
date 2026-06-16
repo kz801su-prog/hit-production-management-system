@@ -124,7 +124,7 @@ $departments = dbFetchAll("SELECT id, dept_name FROM departments WHERE is_active
 $issueSql = "SELECT ii.*,
                e.name AS emp_name, e.employee_code,
                d.dept_name,
-               u.username AS created_by_name,
+               u.login_id AS created_by_name,
                (SELECT COUNT(*) FROM issue_weekly_reports wr WHERE wr.issue_id = ii.id) AS report_count,
                (SELECT report_week FROM issue_weekly_reports wr WHERE wr.issue_id = ii.id ORDER BY report_week DESC LIMIT 1) AS last_report_week
              FROM improvement_issues ii
@@ -144,8 +144,8 @@ $viewIssue   = null;
 $viewReports = [];
 if ($viewId) {
     $viewIssue = dbFetchOne(
-        "SELECT ii.*, e.name AS emp_name, d.dept_name, u.username AS created_by_name,
-                ru.username AS resolved_by_name
+        "SELECT ii.*, e.name AS emp_name, d.dept_name, u.login_id AS created_by_name,
+                ru.login_id AS resolved_by_name
          FROM improvement_issues ii
          LEFT JOIN employees e ON ii.employee_id = e.id
          LEFT JOIN departments d ON ii.dept_id = d.id
@@ -154,7 +154,7 @@ if ($viewId) {
          WHERE ii.id=?", [$viewId]
     );
     $viewReports = dbFetchAll(
-        "SELECT wr.*, u.username AS reporter_name
+        "SELECT wr.*, u.login_id AS reporter_name
          FROM issue_weekly_reports wr
          JOIN users u ON wr.reported_by_user_id = u.id
          WHERE wr.issue_id=? ORDER BY wr.report_week DESC",
