@@ -59,12 +59,24 @@ $user      = getCurrentUser();
             <li><a class="dropdown-item" href="<?= APP_URL ?>/progress_board.php">進捗ボード</a></li>
             <li><a class="dropdown-item" href="<?= APP_URL ?>/gantt.php">ガントチャート</a></li>
             <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="<?= APP_URL ?>/barcode_station.php">
+              <i class="bi bi-upc-scan"></i> バーコードスキャンステーション
+            </a></li>
             <li><a class="dropdown-item" href="<?= APP_URL ?>/barcode_scan.php">
-              <i class="bi bi-upc-scan"></i> バーコードスキャン
+              <i class="bi bi-search"></i> バーコード検索（旧）
             </a></li>
             <?php if (isLeader()): ?>
+            <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="<?= APP_URL ?>/barcode_print.php">
-              <i class="bi bi-printer"></i> バーコード印刷
+              <i class="bi bi-printer"></i> 作業指示バーコード印刷
+            </a></li>
+            <li><a class="dropdown-item" href="<?= APP_URL ?>/process_barcodes.php">
+              <i class="bi bi-upc"></i> 工程バーコード印刷
+            </a></li>
+            <?php endif; ?>
+            <?php if (isAdmin()): ?>
+            <li><a class="dropdown-item" href="<?= APP_URL ?>/employee_barcodes.php">
+              <i class="bi bi-person-badge"></i> 社員コードバーコード印刷
             </a></li>
             <?php endif; ?>
           </ul>
@@ -92,16 +104,10 @@ $user      = getCurrentUser();
             </a></li>
             <li><a class="dropdown-item" href="<?= APP_URL ?>/improvements.php">改善管理</a></li>
             <li><a class="dropdown-item" href="<?= APP_URL ?>/simulator.php">人員シミュレーター</a></li>
-            <?php if (isPresidentOrAdmin()): ?>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="<?= APP_URL ?>/eval_criteria.php">
-              <i class="bi bi-sliders"></i> 評価基準設定
-            </a></li>
-            <?php endif; ?>
           </ul>
         </li>
         <?php endif; ?>
-        <!-- 管理 -->
+        <!-- 管理（admin以上） -->
         <?php if (isAdmin()): ?>
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
@@ -112,9 +118,19 @@ $user      = getCurrentUser();
             <li><a class="dropdown-item" href="<?= APP_URL ?>/users.php">ユーザー管理</a></li>
             <li><a class="dropdown-item" href="<?= APP_URL ?>/words.php">社長の言葉</a></li>
             <li><a class="dropdown-item" href="<?= APP_URL ?>/backup.php">バックアップ</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="<?= APP_URL ?>/eval_criteria.php">
+              <i class="bi bi-sliders"></i> 評価基準設定
+            </a></li>
           </ul>
         </li>
         <?php endif; ?>
+        <!-- マニュアル（全ユーザー） -->
+        <li class="nav-item">
+          <a class="nav-link" href="<?= APP_URL ?>/manual.php">
+            <i class="bi bi-book-half"></i> マニュアル
+          </a>
+        </li>
       </ul>
       <!-- ログインユーザー情報 -->
       <ul class="navbar-nav">

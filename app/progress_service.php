@@ -70,10 +70,14 @@ function finishWork(int $workLogId, array $data): void {
     $endedAt    = time();
     $actualMin  = max(0, ($endedAt - $startedAt) / 60 - $breakMin);
 
+    $qualityGrade = isset($data['quality_grade']) && in_array($data['quality_grade'], ['S','A','B','C','D'])
+        ? $data['quality_grade']
+        : null;
+
     dbExecute(
         "UPDATE work_logs SET
             ended_at = NOW(), break_minutes = ?, actual_minutes = ?,
-            completed_qty = ?, defect_qty = ?, rework_qty = ?, memo = ?
+            completed_qty = ?, defect_qty = ?, rework_qty = ?, memo = ?, quality_grade = ?
          WHERE id = ?",
         [
             $breakMin, round($actualMin, 2),
@@ -81,6 +85,7 @@ function finishWork(int $workLogId, array $data): void {
             (int)($data['defect_qty']    ?? 0),
             (int)($data['rework_qty']    ?? 0),
             $data['memo'] ?? '',
+            $qualityGrade,
             $workLogId,
         ]
     );

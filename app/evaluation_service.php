@@ -40,6 +40,15 @@ function calcAndSaveMonthlyScore(int $employeeId, string $targetMonth): array {
 
     $scores = calcScores($logs, $employeeId, $dateFrom, $dateTo);
 
+    // 社長入力の加算減算を適用
+    $adjPoints = (float)(dbFetchOne(
+        "SELECT COALESCE(SUM(points), 0) AS adj
+         FROM eval_score_adjustments
+         WHERE employee_id = ? AND target_month = ?",
+        [$employeeId, $targetMonth]
+    )['adj'] ?? 0);
+    $totalWithAdj = round(max(0, min(150, $scores['total'] + $adjPoints)), 2);
+
     // DB保存（ON DUPLICATE KEY UPDATE）
     dbExecute(
         "INSERT INTO monthly_worker_scores
@@ -61,9 +70,11 @@ function calcAndSaveMonthlyScore(int $employeeId, string $targetMonth): array {
             $scores['stability'],
             $scores['difficulty'],
             $scores['improvement'],
-            $scores['total'],
+            $totalWithAdj,
         ]
     );
+    $scores['adjustment'] = $adjPoints;
+    $scores['total']      = $totalWithAdj;
 
     return $scores;
 }
@@ -89,12 +100,21 @@ function calcScores(array $logs, int $employeeId, string $dateFrom, string $date
     $efficiencyScore = !empty($perfRates) ? array_sum($perfRates) / count($perfRates) : 0;
 
     // --- 品質点 ---
-    $totalCompleted = array_sum(array_column($logs, 'completed_qty'));
-    $totalDefect    = array_sum(array_column($logs, 'defect_qty'));
-    $totalRework    = array_sum(array_column($logs, 'rework_qty'));
-    $qualityScore   = $totalCompleted > 0
-        ? max(0, ($totalCompleted - $totalDefect - $totalRework * 0.5) / $totalCompleted * 100)
-        : 0;
+    // 上司がS/A/B/C/Dグレードを入力した場合はそちらを優先、未入力は不良数から算出
+    $gradeMap  = ['S' => 100, 'A' => 80, 'B' => 60, 'C' => 40, 'D' => 20];
+    $qualityPerLog = [];
+    foreach ($logs as $log) {
+        $grade = $log['quality_grade'] ?? null;
+        if ($grade && isset($gradeMap[$grade])) {
+            $qualityPerLog[] = $gradeMap[$grade];
+        } elseif ((int)($log['completed_qty'] ?? 0) > 0) {
+            $c = (int)$log['completed_qty'];
+            $d = (int)($log['defect_qty'] ?? 0);
+            $r = (int)($log['rework_qty'] ?? 0);
+            $qualityPerLog[] = max(0, ($c - $d - $r * 0.5) / $c * 100);
+        }
+    }
+    $qualityScore = !empty($qualityPerLog) ? array_sum($qualityPerLog) / count($qualityPerLog) : 0;
 
     // --- 安定性点（バラつきが少ないほど高い）---
     $stabilityScore = 100;

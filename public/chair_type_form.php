@@ -91,6 +91,23 @@ $baseTypes = dbFetchAll(
      WHERE is_base_type = 1 AND is_active = 1 ORDER BY chair_type_code"
 );
 
+// 工程フローチャート用データ（編集時のみ）
+$flowProcesses = [];
+if ($isEdit) {
+    $flowProcesses = dbFetchAll(
+        "SELECT ctps.display_order, ctps.setup_minutes, ctps.base_work_minutes,
+                ctps.standard_workers, ctps.difficulty_level, ctps.can_start_parallel,
+                ctps.is_outsourced, ctps.outsource_vendor, ctps.is_temporarily_excluded,
+                ctps.is_active,
+                p.id AS process_id, p.process_name, p.process_code
+         FROM chair_type_process_standards ctps
+         JOIN processes p ON ctps.process_id = p.id
+         WHERE ctps.chair_type_id = ? AND ctps.is_active = 1
+         ORDER BY ctps.display_order, p.display_order",
+        [$id]
+    );
+}
+
 require __DIR__ . '/parts/header.php';
 ?>
 
@@ -219,5 +236,116 @@ require __DIR__ . '/parts/header.php';
   </div>
   <?php endif; ?>
 </div>
+
+<?php if ($isEdit && !empty($flowProcesses)): ?>
+<!-- =====================================================
+     工程フローチャート
+     ===================================================== -->
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <span><i class="bi bi-diagram-3"></i> 工程フロー</span>
+        <span class="badge bg-secondary ms-1"><?= count($flowProcesses) ?>工程</span>
+        <a href="standards.php?chair_type_id=<?= $id ?>" class="btn btn-sm btn-outline-secondary ms-auto">
+          <i class="bi bi-pencil"></i> 工程を編集
+        </a>
+      </div>
+      <div class="card-body overflow-auto">
+        <div class="flowchart-wrap d-flex align-items-stretch gap-0 pb-2">
+          <?php foreach ($flowProcesses as $i => $fp):
+            $isOut   = !empty($fp['is_outsourced']);
+            $isExcl  = !empty($fp['is_temporarily_excluded']);
+            $isPara  = !empty($fp['can_start_parallel']);
+            $stdMin  = ($fp['setup_minutes'] ?? 0) + ($fp['base_work_minutes'] ?? 0);
+            $diff    = (int)($fp['difficulty_level'] ?? 1);
+
+            if ($isExcl)  $nodeClass = 'fc-node-excluded';
+            elseif ($isOut) $nodeClass = 'fc-node-outsourced';
+            else          $nodeClass = 'fc-node-normal';
+          ?>
+            <?php if ($i > 0): ?>
+            <div class="fc-arrow d-flex align-items-center">
+              <i class="bi bi-arrow-right-short fs-3 text-muted"></i>
+            </div>
+            <?php endif; ?>
+            <div class="fc-node <?= $nodeClass ?> <?= $isPara ? 'fc-parallel' : '' ?>
+                         <?= $isExcl ? 'fc-excluded' : '' ?>">
+              <div class="fc-seq text-muted">
+                <?= sprintf('%02d', $i + 1) ?>
+                <?php if ($isPara): ?><i class="bi bi-layers-fill" title="並行可"></i><?php endif; ?>
+              </div>
+              <div class="fc-name fw-bold"><?= h($fp['process_name']) ?></div>
+              <div class="fc-code font-monospace text-muted"><?= h($fp['process_code']) ?></div>
+              <?php if ($stdMin > 0): ?>
+              <div class="fc-time mt-1">
+                <i class="bi bi-clock text-muted"></i>
+                <?= formatMinutes((float)$stdMin) ?>
+              </div>
+              <?php endif; ?>
+              <div class="fc-badges mt-1 d-flex flex-wrap gap-1 justify-content-center">
+                <?php if ($fp['standard_workers'] > 1): ?>
+                  <span class="badge bg-secondary" title="標準人数">
+                    <i class="bi bi-people-fill"></i><?= $fp['standard_workers'] ?>人
+                  </span>
+                <?php endif; ?>
+                <?php if ($diff >= 4): ?>
+                  <span class="badge bg-<?= $diff === 5 ? 'danger' : 'warning text-dark' ?>" title="難易度">
+                    難<?= $diff ?>
+                  </span>
+                <?php endif; ?>
+                <?php if ($isOut): ?>
+                  <span class="badge bg-warning text-dark" title="外注">外注</span>
+                <?php endif; ?>
+                <?php if ($isExcl): ?>
+                  <span class="badge bg-danger" title="一時除外">除外</span>
+                <?php endif; ?>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        </div>
+
+        <!-- 凡例 -->
+        <div class="d-flex gap-3 mt-3 flex-wrap small text-muted">
+          <span><span class="fc-legend fc-node-normal d-inline-block"></span> 通常工程</span>
+          <span><span class="fc-legend fc-node-outsourced d-inline-block"></span> 外注工程</span>
+          <span><span class="fc-legend fc-node-excluded d-inline-block"></span> 一時除外</span>
+          <span><i class="bi bi-layers-fill text-primary"></i> 前工程と並行可</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<?php elseif ($isEdit): ?>
+<div class="row mt-3">
+  <div class="col-12">
+    <div class="alert alert-light border">
+      <i class="bi bi-diagram-3 text-muted"></i>
+      まだ工程が登録されていません。
+      <a href="standards.php?chair_type_id=<?= $id ?>">工程標準時間管理</a>から工程を追加してください。
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
+<style>
+/* 工程フローチャート */
+.flowchart-wrap     { min-width: max-content; }
+.fc-node            { border: 2px solid #0d6efd; border-radius: 10px; background: #f0f7ff;
+                      min-width: 110px; max-width: 130px; padding: 8px 10px; text-align: center; }
+.fc-node-outsourced { border-color: #ffc107; background: #fffbf0; }
+.fc-node-excluded   { border-color: #dc3545; background: #fff0f0; opacity: .7; }
+.fc-parallel        { border-style: dashed; }
+.fc-seq             { font-size: .7rem; color: #999; margin-bottom: 2px; }
+.fc-name            { font-size: .85rem; line-height: 1.2; }
+.fc-code            { font-size: .7rem; color: #888; margin-top: 2px; }
+.fc-time            { font-size: .75rem; color: #555; }
+.fc-badges          { font-size: .65rem; }
+.fc-arrow           { padding: 0 2px; }
+.fc-legend          { width: 14px; height: 14px; border: 2px solid #0d6efd;
+                      border-radius: 3px; background: #f0f7ff; vertical-align: middle; margin-right: 3px; }
+.fc-legend.fc-node-outsourced { border-color: #ffc107; background: #fffbf0; }
+.fc-legend.fc-node-excluded   { border-color: #dc3545; background: #fff0f0; }
+</style>
 
 <?php require __DIR__ . '/parts/footer.php'; ?>
