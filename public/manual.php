@@ -50,8 +50,10 @@ require __DIR__ . '/parts/header.php';
           <a href="#sec-bc-quality" class="list-group-item list-group-item-action toc-item toc-sub py-1">　└ 品質評価入力</a>
           <a href="#sec-progress"   class="list-group-item list-group-item-action toc-item py-2">8. 進捗ボード</a>
           <a href="#sec-eval"       class="list-group-item list-group-item-action toc-item py-2">9. 個人評価</a>
-          <a href="#sec-admin"      class="list-group-item list-group-item-action toc-item py-2">10. 管理者向け</a>
-          <a href="#sec-special-bc" class="list-group-item list-group-item-action toc-item py-2">11. 特殊バーコード一覧</a>
+          <a href="#sec-eval-carte" class="list-group-item list-group-item-action toc-item toc-sub py-1">　└ 個人カルテ</a>
+          <a href="#sec-simulator"  class="list-group-item list-group-item-action toc-item py-2">10. 人員シミュレーター</a>
+          <a href="#sec-admin"      class="list-group-item list-group-item-action toc-item py-2">11. 管理者向け</a>
+          <a href="#sec-special-bc" class="list-group-item list-group-item-action toc-item py-2">12. 特殊バーコード一覧</a>
         </div>
       </div>
     </div>
@@ -728,7 +730,7 @@ require __DIR__ . '/parts/header.php';
     <section id="sec-eval" class="manual-section">
       <h2 class="section-heading"><span class="section-no">9</span> 個人評価</h2>
 
-      <p>月ごとに作業実績から5つの軸で自動計算されます。「再計算」ボタンを押すといつでも最新データで更新できます。</p>
+      <p>月ごとに作業実績から5つの軸で自動計算されます。「再計算」ボタンを押すといつでも最新データで更新できます。画面には <strong>月次評価</strong> と <strong>個人カルテ</strong> の2つのタブがあります。</p>
 
       <div class="table-responsive mb-3">
         <table class="table table-bordered table-sm">
@@ -750,13 +752,97 @@ require __DIR__ . '/parts/header.php';
         品質グレード（S/A/B/C/D）が入力されると、その時点で<strong>即座に品質点が更新</strong>されます。
         月次の「再計算」を待つ必要はありません。
       </div>
+
+      <!-- 個人カルテ -->
+      <h3 id="sec-eval-carte" class="subsection-heading mt-4"><i class="bi bi-person-vcard"></i> 9-1. 個人カルテ</h3>
+      <p>「個人カルテ」タブに切り替えると、<strong>社員ごとの年間パフォーマンス</strong>を一画面で確認できます。</p>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <div class="how-to-box h-100">
+            <h5 class="how-to-title"><i class="bi bi-search"></i> 表示手順</h5>
+            <ol class="step-list">
+              <li>「個人評価」メニューを開く</li>
+              <li>「<i class="bi bi-person-vcard"></i> 個人カルテ」タブをクリック</li>
+              <li>対象社員・対象年度を選択して「カルテ表示」</li>
+            </ol>
+            <div class="alert alert-light border py-2 mt-2 mb-0 small">
+              <i class="bi bi-lock"></i>
+              自分自身のカルテはすべての権限で閲覧可。他社員は工程リーダー以上が参照可。
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+              <i class="bi bi-bar-chart-line"></i> カルテに表示される情報
+            </div>
+            <ul class="list-group list-group-flush small">
+              <li class="list-group-item"><i class="bi bi-person text-primary"></i> <strong>プロフィール</strong>：所属・役職・入社日</li>
+              <li class="list-group-item"><i class="bi bi-123 text-success"></i> <strong>年間サマリー</strong>：評価回数・合計点・平均点・最高点月</li>
+              <li class="list-group-item"><i class="bi bi-graph-up text-warning"></i> <strong>月次推移グラフ</strong>：年間の総合点折れ線グラフ</li>
+              <li class="list-group-item"><i class="bi bi-table text-info"></i> <strong>年度別能力評価</strong>：年度ごとの評価点・コメント一覧</li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ================================================
-         10. 管理者向け
+         10. 人員シミュレーター
+         ================================================ -->
+    <section id="sec-simulator" class="manual-section">
+      <h2 class="section-heading"><span class="section-no">10</span> 人員シミュレーター</h2>
+
+      <p>製品タイプ・数量・作業者数・1日の稼働時間を入力すると、完成までの所要日数を試算できます。人員配置の検討に活用します。</p>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <div class="how-to-box h-100">
+            <h5 class="how-to-title"><i class="bi bi-calculator"></i> 基本の試算手順</h5>
+            <ol class="step-list">
+              <li>「分析・評価」→「人員シミュレーター」をクリック</li>
+              <li>製品タイプ・数量・作業者数・1日の稼働時間を入力</li>
+              <li>「試算する」ボタンをクリック</li>
+              <li>工程別の所要時間と合計日数を確認</li>
+            </ol>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card h-100 border-success">
+            <div class="card-header bg-success text-white fw-bold">
+              <i class="bi bi-people-fill"></i> チーム構成シミュレーション（評価ベース）
+            </div>
+            <div class="card-body small">
+              <p class="mb-2">評価データが存在する場合、<strong>評価基準月</strong>を選択すると個人評価スコアを使ったチーム試算ができます。</p>
+              <div class="d-flex flex-column gap-2">
+                <div class="p-2 rounded bg-success-subtle">
+                  <i class="bi bi-trophy-fill text-success"></i>
+                  <strong>最速かつ最高品質の構成</strong><br>
+                  <span class="text-muted">総合点上位の社員を優先。推定所要時間・日数・メンバー名を表示</span>
+                </div>
+                <div class="p-2 rounded bg-danger-subtle">
+                  <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+                  <strong>反対条件の構成</strong><br>
+                  <span class="text-muted">総合点下位のチーム。サポート・教育計画の立案に活用</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-info py-2">
+        <i class="bi bi-lightbulb"></i>
+        評価基準月に評価データがない場合はチーム構成試算は表示されません。先に「個人評価」で月次スコアを計算してください。
+      </div>
+    </section>
+
+    <!-- ================================================
+         11. 管理者向け
          ================================================ -->
     <section id="sec-admin" class="manual-section">
-      <h2 class="section-heading"><span class="section-no">10</span> 管理者向け機能</h2>
+      <h2 class="section-heading"><span class="section-no">11</span> 管理者向け機能</h2>
 
       <div class="row g-3">
         <div class="col-md-6">
@@ -804,7 +890,7 @@ require __DIR__ . '/parts/header.php';
          11. 特殊バーコード一覧
          ================================================ -->
     <section id="sec-special-bc" class="manual-section">
-      <h2 class="section-heading"><span class="section-no">11</span> 特殊バーコード一覧</h2>
+      <h2 class="section-heading"><span class="section-no">12</span> 特殊バーコード一覧</h2>
 
       <p>以下のコードをバーコードスキャンステーションに入力（スキャン）すると特殊操作ができます。</p>
 
