@@ -59,6 +59,11 @@ foreach ($orders as $o) {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/style.css">
+  <link rel="manifest" href="<?= APP_URL ?>/manifest.webmanifest">
+  <link rel="icon" href="<?= APP_URL ?>/assets/icons/pwa-icon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#0d6efd">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="<?= h(APP_NAME) ?>">
   <title>ガントチャート</title>
   <style>body{overflow:hidden;background:#fff;}</style>
 </head>
@@ -102,6 +107,13 @@ if ($embed): ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="<?= APP_URL ?>/assets/js/main.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('<?= APP_URL ?>/sw.js');
+  });
+}
+</script>
 <script>
 (function(){
   const raw = <?= $jsData ?>;

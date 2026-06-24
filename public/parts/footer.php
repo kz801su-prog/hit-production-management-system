@@ -7,6 +7,13 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <script src="<?= APP_URL ?>/assets/js/main.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('<?= APP_URL ?>/sw.js');
+  });
+}
+</script>
 <?php if (!empty($extraJs)): ?>
 <script><?= $extraJs ?></script>
 <?php endif; ?>

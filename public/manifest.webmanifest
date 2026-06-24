@@ -1,0 +1,18 @@
+{
+  "name": "オーツーファーニチャー 工程管理",
+  "short_name": "Otsu",
+  "description": "オーツーファーニチャー 椅子製造 工程管理システム",
+  "start_url": "./login.php",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0d6efd",
+  "icons": [
+    {
+      "src": "./assets/icons/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -16,6 +16,11 @@ $user      = getCurrentUser();
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/style.css">
+<link rel="manifest" href="<?= APP_URL ?>/manifest.webmanifest">
+<link rel="icon" href="<?= APP_URL ?>/assets/icons/pwa-icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0d6efd">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="<?= h(APP_NAME) ?>">
 </head>
 <body>
 <!-- ナビゲーションバー -->

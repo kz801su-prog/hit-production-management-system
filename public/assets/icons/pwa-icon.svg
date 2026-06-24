@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="O">
+  <rect width="512" height="512" rx="120" fill="#f8fafc"/>
+  <circle cx="256" cy="164" r="96" fill="#0d6efd" opacity="0.18"/>
+  <path d="M136 326c0-49.706 40.294-90 90-90h60c49.706 0 90 40.294 90 90v40H136z" fill="#0d6efd"/>
+  <text x="256" y="198" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="120" font-weight="700" fill="#0d6efd">O</text>
+</svg>

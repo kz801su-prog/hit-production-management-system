@@ -86,6 +86,11 @@ try {
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/style.css">
+<link rel="manifest" href="<?= APP_URL ?>/manifest.webmanifest">
+<link rel="icon" href="<?= APP_URL ?>/assets/icons/pwa-icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0d6efd">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="<?= h(APP_NAME) ?>">
 </head>
 <body class="bg-dark">
 <div class="container">
@@ -94,10 +99,8 @@ try {
 
       <!-- タイトル -->
       <div class="text-center mb-4">
-        <h1 class="text-white fw-bold fs-4">
-          <i class="bi bi-tools"></i> オーツーファーニチャー<br>
-          <small class="fs-6 text-white-50">椅子製造 工程管理システム</small>
-        </h1>
+        <img src="<?= APP_URL ?>/assets/images/logo.png" alt="OTU-FURNITURE" style="max-width:260px;width:100%;height:auto;" class="mb-2">
+        <p class="text-white-50 small mb-0">椅子製造 工程管理システム</p>
       </div>
 
       <!-- 社長の言葉 -->
@@ -190,6 +193,13 @@ try {
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('<?= APP_URL ?>/sw.js');
+  });
+}
+</script>
 <script>
 // TOTP コード入力: 6桁入力完了で自動送信
 document.addEventListener('DOMContentLoaded', () => {
