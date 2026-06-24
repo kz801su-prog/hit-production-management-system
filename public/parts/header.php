@@ -17,6 +17,7 @@ $user      = getCurrentUser();
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/style.css">
 <link rel="manifest" href="<?= APP_URL ?>/manifest.webmanifest">
+<link rel="icon" href="<?= APP_URL ?>/assets/icons/favicon.ico" type="image/x-icon">
 <link rel="icon" href="<?= APP_URL ?>/assets/icons/pwa-icon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#0d6efd">
 <meta name="apple-mobile-web-app-capable" content="yes">
