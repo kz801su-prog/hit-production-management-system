@@ -44,7 +44,7 @@ function totpCode(string $secret, int $counter): string {
 /**
  * Authenticator アプリ用の otpauth:// URL を生成（QRコードのデータ）
  */
-function totpOtpauthUrl(string $secret, string $accountName, string $issuer = 'OtsuFurniture'): string {
+function totpOtpauthUrl(string $secret, string $accountName, string $issuer = 'HIT'): string {
     return 'otpauth://totp/'
         . rawurlencode($issuer . ':' . $accountName)
         . '?secret=' . rawurlencode($secret)
